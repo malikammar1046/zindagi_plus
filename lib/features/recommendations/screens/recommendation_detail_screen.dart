@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:zindagi_plus/core/theme/app_theme.dart';
-import 'package:zindagi_plus/shared/widgets/premium_ui.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 // ── Mock recommendations data ──────────────────────────────────────────────────
 
@@ -9,7 +8,7 @@ const _mockRecommendations = <String, Map<String, dynamic>>{
     'type': 'medication',
     'typeEmoji': '💊',
     'typeLabel': 'Medication',
-    'typeColor': 0xFF6D8CFF,
+    'typeColor': 0xFF3B82F6, // Blue
     'title': 'Take Metformin 500mg',
     'subtitle': 'Reduces blood glucose levels effectively',
     'why':
@@ -22,13 +21,13 @@ const _mockRecommendations = <String, Map<String, dynamic>>{
     ],
     'impact': 'Expected HbA1c reduction of 1–1.5% over 12 weeks',
     'priority': 'High',
-    'priorityColor': 0xFFEF4444,
+    'priorityColor': 0xFFEF4444, // Red
   },
   '2': {
     'type': 'nutrition',
     'typeEmoji': '🥗',
     'typeLabel': 'Nutrition',
-    'typeColor': 0xFF43D6A2,
+    'typeColor': 0xFF00674F, // Emerald
     'title': 'Increase Fibre Intake',
     'subtitle': 'Aids blood sugar control and gut health',
     'why':
@@ -41,13 +40,13 @@ const _mockRecommendations = <String, Map<String, dynamic>>{
     ],
     'impact': 'Could reduce LDL cholesterol by 5–10% in 8 weeks',
     'priority': 'Medium',
-    'priorityColor': 0xFFF59E0B,
+    'priorityColor': 0xFFF59E0B, // Orange
   },
   '3': {
     'type': 'activity',
     'typeEmoji': '🏃',
     'typeLabel': 'Activity',
-    'typeColor': 0xFF63DDF4,
+    'typeColor': 0xFF0EA5E9, // Sky Blue
     'title': '20-Min Morning Walk',
     'subtitle': 'Improves insulin sensitivity significantly',
     'why':
@@ -66,7 +65,7 @@ const _mockRecommendations = <String, Map<String, dynamic>>{
     'type': 'insight',
     'typeEmoji': '💡',
     'typeLabel': 'Insight',
-    'typeColor': 0xFF9AF4D0,
+    'typeColor': 0xFF00674F, // Emerald
     'title': 'Increase Vitamin D',
     'subtitle': 'Critical deficiency detected in your report',
     'why':
@@ -151,250 +150,235 @@ class _RecommendationDetailScreenState
     final rec = _rec;
     final accentColor = Color(rec['typeColor'] as int);
     final steps = rec['steps'] as List<String>;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    return PremiumBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          ),
-          actions: [
-            // Type badge
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: .14),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: accentColor.withValues(alpha: .35)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    rec['typeEmoji'] as String,
-                    style: const TextStyle(fontSize: 13),
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          // Type badge
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  rec['typeEmoji'] as String,
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  rec['typeLabel'] as String,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: accentColor,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(width: 5),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+        children: [
+          // ── Header ────────────────────────────────────────────────────────
+          AnimatedBuilder(
+            animation: _headerCtrl,
+            builder: (_, _) {
+              final t = CurvedAnimation(
+                parent: _headerCtrl,
+                curve: Curves.easeOutBack,
+              ).value.clamp(0.0, 1.0);
+              return Opacity(
+                opacity: t,
+                child: Transform.translate(
+                  offset: Offset(0, (1 - t) * 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Priority badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Color(rec['priorityColor'] as int)
+                              .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${rec['priority']} Priority',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(rec['priorityColor'] as int),
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        rec['title'] as String,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: colorScheme.onSurface,
+                          height: 1.2,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        rec['subtitle'] as String,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // ── Why section ───────────────────────────────────────────────────
+          AnimatedBuilder(
+            animation: _contentCtrl,
+            builder: (_, child) {
+              final t = CurvedAnimation(
+                parent: _contentCtrl,
+                curve: Curves.easeOutCubic,
+              ).value;
+              return Opacity(opacity: t, child: child);
+            },
+            child: AppCard(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.psychology_outlined,
+                        color: accentColor,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Why this recommendation?',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: accentColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   Text(
-                    rec['typeLabel'] as String,
+                    rec['why'] as String,
                     style: TextStyle(
-                      fontSize: 11,
-                      color: accentColor,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: colorScheme.onSurface.withValues(alpha: 0.8),
+                      height: 1.6,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: accentColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.trending_up_rounded,
+                          color: accentColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            rec['impact'] as String,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: accentColor,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-          children: [
-            // ── Header ────────────────────────────────────────────────────────
-            AnimatedBuilder(
-              animation: _headerCtrl,
+          ),
+
+          const SizedBox(height: 32),
+
+          // ── How to action ─────────────────────────────────────────────────
+          const SectionHeader(title: 'How to Action'),
+          const SizedBox(height: 16),
+
+          // Step list with stagger
+          ...List.generate(steps.length, (i) {
+            return AnimatedBuilder(
+              animation: _stepCtls[i],
               builder: (_, _) {
                 final t = CurvedAnimation(
-                  parent: _headerCtrl,
+                  parent: _stepCtls[i],
                   curve: Curves.easeOutBack,
                 ).value.clamp(0.0, 1.0);
                 return Opacity(
                   opacity: t,
                   child: Transform.translate(
-                    offset: Offset(0, (1 - t) * 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 8),
-                        // Priority badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Color(rec['priorityColor'] as int)
-                                .withValues(alpha: .14),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${rec['priority']} Priority',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Color(rec['priorityColor'] as int),
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          rec['title'] as String,
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                            height: 1.2,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          rec['subtitle'] as String,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: AppColors.textSecondary,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
+                    offset: Offset((1 - t) * 24, 0),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _StepCard(
+                        index: i,
+                        text: steps[i],
+                        accentColor: accentColor,
+                      ),
                     ),
                   ),
                 );
               },
-            ),
+            );
+          }),
 
-            // ── Why section ───────────────────────────────────────────────────
-            AnimatedBuilder(
-              animation: _contentCtrl,
-              builder: (_, child) {
-                final t = CurvedAnimation(
-                  parent: _contentCtrl,
-                  curve: Curves.easeOutCubic,
-                ).value;
-                return Opacity(opacity: t, child: child);
-              },
-              child: GlassPanel(
-                padding: const EdgeInsets.all(20),
-                radius: 24,
-                gradient: LinearGradient(
-                  colors: [
-                    accentColor.withValues(alpha: .10),
-                    accentColor.withValues(alpha: .03),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.psychology_outlined,
-                          color: accentColor,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Why this recommendation?',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: accentColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      rec['why'] as String,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        height: 1.65,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface.withValues(alpha: .6),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: accentColor.withValues(alpha: .25),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.trending_up_rounded,
-                            color: accentColor,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              rec['impact'] as String,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: accentColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          const SizedBox(height: 40),
 
-            const SizedBox(height: 22),
-
-            // ── How to action ─────────────────────────────────────────────────
-            const Text(
-              'How to Action',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Step list with stagger (Apple §8: hint direction)
-            ...List.generate(steps.length, (i) {
-              return AnimatedBuilder(
-                animation: _stepCtls[i],
-                builder: (_, _) {
-                  final t = CurvedAnimation(
-                    parent: _stepCtls[i],
-                    curve: Curves.easeOutBack,
-                  ).value.clamp(0.0, 1.0);
-                  return Opacity(
-                    opacity: t,
-                    child: Transform.translate(
-                      offset: Offset((1 - t) * 24, 0),
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _StepCard(
-                          index: i,
-                          text: steps[i],
-                          accentColor: accentColor,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              );
-            }),
-
-            const SizedBox(height: 28),
-
-            // ── Mark as Done ──────────────────────────────────────────────────
-            _DoneButton(
-              done: _markedDone,
-              onPressed: () => setState(() => _markedDone = !_markedDone),
-            ),
-          ],
-        ),
+          // ── Mark as Done ──────────────────────────────────────────────────
+          PrimaryButton(
+            onPressed: () => setState(() => _markedDone = !_markedDone),
+            text: _markedDone ? 'Completed' : 'Mark as Done',
+            icon: _markedDone ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
+          ),
+        ],
       ),
     );
   }
@@ -414,128 +398,44 @@ class _StepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassPanel(
-      padding: const EdgeInsets.all(16),
-      radius: 18,
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return AppCard(
+      padding: const EdgeInsets.all(20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: .15),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: accentColor.withValues(alpha: .35)),
+              color: accentColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: accentColor.withValues(alpha: 0.3)),
             ),
             child: Center(
               child: Text(
                 '${index + 1}',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: accentColor,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textPrimary,
-                height: 1.55,
+              style: TextStyle(
+                fontSize: 15,
+                color: colorScheme.onSurface,
+                height: 1.5,
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Done button (Apple §1: respond on pointer-down) ────────────────────────────
-
-class _DoneButton extends StatefulWidget {
-  const _DoneButton({required this.done, required this.onPressed});
-  final bool done;
-  final VoidCallback onPressed;
-
-  @override
-  State<_DoneButton> createState() => _DoneButtonState();
-}
-
-class _DoneButtonState extends State<_DoneButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onPressed();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 140),
-        scale: _pressed ? 0.97 : 1.0,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: widget.done
-                ? const LinearGradient(
-                    colors: [AppColors.emerald, Color(0xFF238F87)],
-                  )
-                : null,
-            color: widget.done ? null : AppColors.surface,
-            borderRadius: BorderRadius.circular(22),
-            border: widget.done
-                ? null
-                : Border.all(color: AppColors.emerald.withValues(alpha: .5)),
-            boxShadow: widget.done
-                ? [
-                    BoxShadow(
-                      color: AppColors.emerald.withValues(alpha: .3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 260),
-                child: Icon(
-                  widget.done
-                      ? Icons.check_circle_rounded
-                      : Icons.check_circle_outline_rounded,
-                  key: ValueKey(widget.done),
-                  color: widget.done ? AppColors.background : AppColors.emerald,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 8),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: widget.done ? AppColors.background : AppColors.emerald,
-                ),
-                child: Text(
-                  widget.done ? 'Completed ✓' : 'Mark as Done',
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

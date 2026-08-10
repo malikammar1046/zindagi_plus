@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class ReportDetailScreen extends StatelessWidget {
   const ReportDetailScreen({super.key});
@@ -9,7 +11,7 @@ class ReportDetailScreen extends StatelessWidget {
       'value': '6.8%',
       'range': 'Normal: < 5.7%',
       'status': 'Borderline',
-      'statusColor': 0xFFF59E0B,
+      'statusColor': Colors.orange,
       'icon': Icons.water_drop_outlined,
     },
     {
@@ -17,7 +19,7 @@ class ReportDetailScreen extends StatelessWidget {
       'value': '130 mg/dL',
       'range': 'Optimal: < 100 mg/dL',
       'status': 'High',
-      'statusColor': 0xFFEF4444,
+      'statusColor': Colors.red,
       'icon': Icons.monitor_heart_outlined,
     },
     {
@@ -25,7 +27,7 @@ class ReportDetailScreen extends StatelessWidget {
       'value': '55 mg/dL',
       'range': 'Healthy: > 40 mg/dL',
       'status': 'Normal',
-      'statusColor': 0xFF10B981,
+      'statusColor': Color(0xFF00674F),
       'icon': Icons.favorite_outline_rounded,
     },
     {
@@ -33,7 +35,7 @@ class ReportDetailScreen extends StatelessWidget {
       'value': '148 mg/dL',
       'range': 'Normal: < 150 mg/dL',
       'status': 'Normal',
-      'statusColor': 0xFF10B981,
+      'statusColor': Color(0xFF00674F),
       'icon': Icons.science_outlined,
     },
     {
@@ -41,7 +43,7 @@ class ReportDetailScreen extends StatelessWidget {
       'value': '108 mg/dL',
       'range': 'Normal: 70–99 mg/dL',
       'status': 'Borderline',
-      'statusColor': 0xFFF59E0B,
+      'statusColor': Colors.orange,
       'icon': Icons.opacity_rounded,
     },
     {
@@ -49,7 +51,7 @@ class ReportDetailScreen extends StatelessWidget {
       'value': '18 ng/mL',
       'range': 'Normal: 20–50 ng/mL',
       'status': 'Low',
-      'statusColor': 0xFFEF4444,
+      'statusColor': Colors.red,
       'icon': Icons.wb_sunny_outlined,
     },
     {
@@ -57,7 +59,7 @@ class ReportDetailScreen extends StatelessWidget {
       'value': '14.2 g/dL',
       'range': 'Normal: 13.5–17.5 g/dL',
       'status': 'Normal',
-      'statusColor': 0xFF10B981,
+      'statusColor': Color(0xFF00674F),
       'icon': Icons.bloodtype_outlined,
     },
     {
@@ -65,7 +67,7 @@ class ReportDetailScreen extends StatelessWidget {
       'value': '0.9 mg/dL',
       'range': 'Normal: 0.7–1.2 mg/dL',
       'status': 'Normal',
-      'statusColor': 0xFF10B981,
+      'statusColor': Color(0xFF00674F),
       'icon': Icons.filter_alt_outlined,
     },
   ];
@@ -73,22 +75,19 @@ class ReportDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(title: const Text('Lab Report Analysis')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+        body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
         children: [
           _SummaryCard(),
           const SizedBox(height: 20),
           // Counts row
           _StatusCountsRow(biomarkers: _biomarkers),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Biomarker Results',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 12),
@@ -103,35 +102,23 @@ class ReportDetailScreen extends StatelessWidget {
 class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppCard(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E6B4F), Color(0xFF2D9C73)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E6B4F).withValues(alpha: 0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+      color: colorScheme.primary, // Make it emerald solid background
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.assignment_turned_in_rounded,
-                  color: Colors.white, size: 22),
+              Icon(Icons.assignment_turned_in_rounded,
+                  color: colorScheme.onPrimary, size: 22),
               const SizedBox(width: 10),
-              const Text(
+              Text(
                 'Report Analysed',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: colorScheme.onPrimary,
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
                 ),
@@ -141,26 +128,41 @@ class _SummaryCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: colorScheme.onPrimary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
+                child: Text(
                   'Mock OCR',
-                  style: TextStyle(color: Colors.white, fontSize: 11),
+                  style: TextStyle(color: colorScheme.onPrimary, fontSize: 11),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'Blood_Report_July_2025.jpg',
-            style: TextStyle(color: Colors.white, fontSize: 14),
+            style: TextStyle(color: colorScheme.onPrimary, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
             '8 values extracted  ·  Analysed just now',
             style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.75), fontSize: 12),
+                color: colorScheme.onPrimary.withValues(alpha: 0.75), fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () {
+              context.push('/upload/explanation');
+            },
+            icon: const Icon(Icons.auto_awesome_rounded, color: Colors.white),
+            label: const Text(
+              'Explain in Simple Language',
+              style: TextStyle(color: Colors.white),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.white70),
+              foregroundColor: Colors.white,
+            ),
           ),
         ],
       ),
@@ -188,11 +190,11 @@ class _StatusCountsRow extends StatelessWidget {
 
     return Row(
       children: [
-        _CountChip(count: normal, label: 'Normal', color: const Color(0xFF10B981)),
+        _CountChip(count: normal, label: 'Normal', color: const Color(0xFF00674F)), // Emerald
         const SizedBox(width: 10),
-        _CountChip(count: borderline, label: 'Borderline', color: const Color(0xFFF59E0B)),
+        _CountChip(count: borderline, label: 'Borderline', color: Colors.orange),
         const SizedBox(width: 10),
-        _CountChip(count: abnormal, label: 'Abnormal', color: const Color(0xFFEF4444)),
+        _CountChip(count: abnormal, label: 'Abnormal', color: Colors.red),
       ],
     );
   }
@@ -242,22 +244,12 @@ class _BiomarkerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = Color(biomarker['statusColor'] as int);
+    final statusColor = biomarker['statusColor'] as Color;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: Row(
         children: [
           Container(
@@ -280,17 +272,17 @@ class _BiomarkerCard extends StatelessWidget {
               children: [
                 Text(
                   biomarker['name'] as String,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   biomarker['range'] as String,
-                  style: const TextStyle(
-                      fontSize: 11, color: Color(0xFF9CA3AF)),
+                  style: TextStyle(
+                      fontSize: 11, color: colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
               ],
             ),
@@ -300,10 +292,10 @@ class _BiomarkerCard extends StatelessWidget {
             children: [
               Text(
                 biomarker['value'] as String,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 4),

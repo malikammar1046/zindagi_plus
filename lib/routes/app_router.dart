@@ -18,9 +18,24 @@ import 'package:zindagi_plus/features/reports/screens/report_detail_screen.dart'
 import 'package:zindagi_plus/features/reports/screens/report_processing_screen.dart';
 import 'package:zindagi_plus/features/reports/screens/upload_screen.dart';
 import 'package:zindagi_plus/features/settings/screens/settings_screen.dart';
+import 'package:zindagi_plus/features/settings/screens/notification_preferences_screen.dart';
+import 'package:zindagi_plus/features/settings/screens/account_management_screen.dart';
+import 'package:zindagi_plus/features/settings/screens/delete_account_screen.dart';
+import 'package:zindagi_plus/features/settings/screens/privacy_policy_screen.dart';
 import 'package:zindagi_plus/features/timeline/screens/health_timeline_screen.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
 import 'package:zindagi_plus/shared/widgets/app_shell.dart';
+
+import 'package:zindagi_plus/features/onboarding/screens/splash_screen.dart';
+import 'package:zindagi_plus/features/onboarding/screens/onboarding_screen.dart';
+import 'package:zindagi_plus/features/auth/screens/email_verification_screen.dart';
+import 'package:zindagi_plus/features/auth/screens/forgot_password_screen.dart';
+import 'package:zindagi_plus/features/auth/screens/reset_password_screen.dart';
+import 'package:zindagi_plus/features/dashboard/screens/weekly_review_screen.dart';
+import 'package:zindagi_plus/features/reports/screens/report_explanation_screen.dart';
+import 'package:zindagi_plus/features/medications/screens/add_medication_screen.dart';
+import 'package:zindagi_plus/features/medications/screens/medication_reminder_screen.dart';
+import 'package:zindagi_plus/features/facilities/screens/nearby_facilities_screen.dart';
 
 /// Listens to [authNotifierProvider] and notifies [GoRouter] to re-evaluate
 /// its redirect logic whenever the authentication state changes.
@@ -39,10 +54,16 @@ class _RouterNotifier extends ChangeNotifier {
   String? redirect(BuildContext context, GoRouterState routerState) {
     final isLoggedIn = _ref.read(authNotifierProvider) != null;
     final loc = routerState.matchedLocation;
-    final isAuthRoute = loc == '/login' || loc == '/register';
+    final isAuthRoute = loc == '/login' || 
+                        loc == '/register' || 
+                        loc == '/splash' || 
+                        loc == '/onboarding' ||
+                        loc == '/email-verification' ||
+                        loc == '/forgot-password' ||
+                        loc == '/reset-password';
 
-    if (!isLoggedIn && !isAuthRoute) return '/login';
-    if (isLoggedIn && isAuthRoute) return '/dashboard';
+    if (!isLoggedIn && !isAuthRoute) return '/splash';
+    if (isLoggedIn && (loc == '/login' || loc == '/register' || loc == '/splash' || loc == '/onboarding')) return '/dashboard';
     return null;
   }
 }
@@ -56,12 +77,32 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterNotifier(ref);
 
   final router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
     debugLogDiagnostics: false,
     refreshListenable: notifier,
     redirect: notifier.redirect,
     routes: [
       // ── Unauthenticated routes ────────────────────────────────────────────
+      GoRoute(
+        path: '/splash',
+        builder: (_, _) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (_, _) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/email-verification',
+        builder: (_, _) => const EmailVerificationScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (_, _) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (_, _) => const ResetPasswordScreen(),
+      ),
       GoRoute(
         path: '/login',
         builder: (_, _) => const LoginScreen(),
@@ -77,12 +118,28 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const ScoreBreakdownScreen(),
       ),
       GoRoute(
+        path: '/weekly-review',
+        builder: (_, _) => const WeeklyReviewScreen(),
+      ),
+      GoRoute(
         path: '/activities',
         builder: (_, _) => const ActivityScreen(),
       ),
       GoRoute(
         path: '/medications',
         builder: (_, _) => const MedicationListScreen(),
+      ),
+      GoRoute(
+        path: '/add-medication',
+        builder: (_, _) => const AddMedicationScreen(),
+      ),
+      GoRoute(
+        path: '/medication-reminder',
+        builder: (_, _) => const MedicationReminderScreen(),
+      ),
+      GoRoute(
+        path: '/nearby-facilities',
+        builder: (_, _) => const NearbyFacilitiesScreen(),
       ),
       GoRoute(
         path: '/timeline',
@@ -127,6 +184,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'result',
                     builder: (_, _) => const ReportDetailScreen(),
+                  ),
+                  GoRoute(
+                    path: 'explanation',
+                    builder: (_, _) => const ReportExplanationScreen(),
                   ),
                 ],
               ),
@@ -180,6 +241,26 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/settings',
                 builder: (_, _) => const SettingsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'notifications',
+                    builder: (_, _) => const NotificationPreferencesScreen(),
+                  ),
+                  GoRoute(
+                    path: 'account',
+                    builder: (_, _) => const AccountManagementScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'delete',
+                        builder: (_, _) => const DeleteAccountScreen(),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'privacy',
+                    builder: (_, _) => const PrivacyPolicyScreen(),
+                  ),
+                ],
               ),
             ],
           ),

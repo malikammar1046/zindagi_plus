@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:zindagi_plus/core/theme/app_theme.dart';
-import 'package:zindagi_plus/shared/widgets/premium_ui.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 // ── Mock data ──────────────────────────────────────────────────────────────────
 
@@ -10,7 +9,6 @@ const _activities = [
     name: 'Morning Walk',
     duration: '30 min',
     intensity: 'Low',
-    intensityColor: AppColors.emerald,
     calories: '120 kcal',
     category: 'Cardio',
     desc: 'A brisk 30-minute walk first thing in the morning on an empty stomach maximises fat oxidation and improves insulin sensitivity.',
@@ -21,7 +19,6 @@ const _activities = [
     name: 'Yoga & Stretching',
     duration: '20 min',
     intensity: 'Low',
-    intensityColor: AppColors.emerald,
     calories: '65 kcal',
     category: 'Flexibility',
     desc: 'Gentle yoga reduces cortisol levels, which directly impacts blood glucose. The stretching component improves circulation to muscles.',
@@ -32,7 +29,6 @@ const _activities = [
     name: 'Cycling (Stationary)',
     duration: '20 min',
     intensity: 'Medium',
-    intensityColor: AppColors.warning,
     calories: '180 kcal',
     category: 'Cardio',
     desc: 'Stationary cycling is joint-friendly and provides an excellent cardiovascular workout. It significantly increases glucose uptake in muscles.',
@@ -43,7 +39,6 @@ const _activities = [
     name: 'Swimming',
     duration: '30 min',
     intensity: 'Medium',
-    intensityColor: AppColors.warning,
     calories: '240 kcal',
     category: 'Full Body',
     desc: 'Swimming engages all major muscle groups and has minimal joint impact. It is particularly beneficial for those managing weight and blood glucose.',
@@ -54,7 +49,6 @@ const _activities = [
     name: 'Resistance Training',
     duration: '25 min',
     intensity: 'High',
-    intensityColor: AppColors.error,
     calories: '200 kcal',
     category: 'Strength',
     desc: 'Building muscle mass increases your resting metabolic rate and significantly improves long-term insulin sensitivity — a key goal for your profile.',
@@ -65,7 +59,6 @@ const _activities = [
     name: 'Bodyweight Circuit',
     duration: '20 min',
     intensity: 'High',
-    intensityColor: AppColors.error,
     calories: '220 kcal',
     category: 'Strength',
     desc: 'Squats, push-ups and lunges performed in a circuit burns calories efficiently and requires no equipment. Great for home workouts.',
@@ -132,154 +125,140 @@ class _ActivityScreenState extends State<ActivityScreen>
   @override
   Widget build(BuildContext context) {
     final indices = _filteredIndices;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    return PremiumBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: const Text('Activity Plan'),
-          actions: [
-            // Weekly target chip
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.cyan.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.cyan.withValues(alpha: .3)),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.local_fire_department_rounded,
-                    color: AppColors.cyan,
-                    size: 14,
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('Activity Plan'),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: colorScheme.secondary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: colorScheme.secondary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.local_fire_department_rounded,
+                  color: colorScheme.secondary,
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '3/5 days',
+                  style: TextStyle(
+                    color: colorScheme.secondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                   ),
-                  SizedBox(width: 4),
-                  Text(
-                    '3/5 days',
-                    style: TextStyle(
-                      color: AppColors.cyan,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Summary banner ─────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: AppCard(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  const Text('🏃', style: TextStyle(fontSize: 34)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AI-Tailored Activity Plan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Personalised for blood sugar management & weight',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  _NearbyButton(),
                 ],
               ),
             ),
-          ],
-        ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Summary banner ─────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: GlassPanel(
-                padding: const EdgeInsets.all(18),
-                radius: 24,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.cyan.withValues(alpha: .14),
-                    AppColors.blue.withValues(alpha: .05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                child: Row(
-                  children: [
-                    const Text('🏃', style: TextStyle(fontSize: 34)),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'AI-Tailored Activity Plan',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            'Personalised for blood sugar management & weight',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    _NearbyButton(),
-                  ],
-                ),
-              ),
-            ),
+          ),
 
-            // ── Category filter chips ──────────────────────────────────────
-            // Apple §1: chips respond on pointer-down
-            SizedBox(
-              height: 42,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _categories.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => _CategoryChip(
-                  label: _categories[i],
-                  selected: _selectedCategory == _categories[i],
-                  onTap: () {
-                    setState(() => _selectedCategory = _categories[i]);
-                    _animateCards();
-                  },
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // ── Activity cards ─────────────────────────────────────────────
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                itemCount: indices.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (_, pos) {
-                  final i = indices[pos];
-                  final act = _activities[i];
-                  return AnimatedBuilder(
-                    animation: _cardCtls[i],
-                    builder: (_, child) {
-                      final t = CurvedAnimation(
-                        parent: _cardCtls[i],
-                        curve: Curves.easeOutBack,
-                      ).value.clamp(0.0, 1.0);
-                      return Opacity(
-                        opacity: t,
-                        child: Transform.translate(
-                          offset: Offset(0, (1 - t) * 24),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: _ActivityCard(activity: act),
-                  );
+          // ── Category filter chips ──────────────────────────────────────
+          SizedBox(
+            height: 42,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: _categories.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (_, i) => _CategoryChip(
+                label: _categories[i],
+                selected: _selectedCategory == _categories[i],
+                onTap: () {
+                  setState(() => _selectedCategory = _categories[i]);
+                  _animateCards();
                 },
               ),
             ),
-          ],
-        ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Activity cards ─────────────────────────────────────────────
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+              itemCount: indices.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 16),
+              itemBuilder: (_, pos) {
+                final i = indices[pos];
+                final act = _activities[i];
+                return AnimatedBuilder(
+                  animation: _cardCtls[i],
+                  builder: (_, child) {
+                    final t = CurvedAnimation(
+                      parent: _cardCtls[i],
+                      curve: Curves.easeOutBack,
+                    ).value.clamp(0.0, 1.0);
+                    return Opacity(
+                      opacity: t,
+                      child: Transform.translate(
+                        offset: Offset(0, (1 - t) * 24),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _ActivityCard(activity: act),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 }
-
-// ── Category chip ──────────────────────────────────────────────────────────────
 
 class _CategoryChip extends StatefulWidget {
   const _CategoryChip({
@@ -300,6 +279,8 @@ class _CategoryChipState extends State<_CategoryChip> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -316,21 +297,21 @@ class _CategoryChipState extends State<_CategoryChip> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: widget.selected
-                ? AppColors.emerald.withValues(alpha: .18)
-                : AppColors.surface,
+                ? colorScheme.primary
+                : colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: widget.selected
-                  ? AppColors.emerald.withValues(alpha: .5)
-                  : AppColors.divider,
+                  ? colorScheme.primary
+                  : Theme.of(context).dividerColor,
             ),
           ),
           child: Text(
             widget.label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: widget.selected ? AppColors.mint : AppColors.textSecondary,
+              color: widget.selected ? colorScheme.onPrimary : colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ),
@@ -339,8 +320,6 @@ class _CategoryChipState extends State<_CategoryChip> {
   }
 }
 
-// ── Activity card ──────────────────────────────────────────────────────────────
-
 class _ActivityCard extends StatefulWidget {
   const _ActivityCard({required this.activity});
   final ({
@@ -348,7 +327,6 @@ class _ActivityCard extends StatefulWidget {
     String name,
     String duration,
     String intensity,
-    Color intensityColor,
     String calories,
     String category,
     String desc,
@@ -363,9 +341,24 @@ class _ActivityCardState extends State<_ActivityCard> {
   bool _expanded = false;
   bool _pressed = false;
 
+  Color _getIntensityColor(String intensity, ColorScheme colorScheme) {
+    switch (intensity.toLowerCase()) {
+      case 'low':
+        return colorScheme.primary;
+      case 'medium':
+        return Colors.orange;
+      case 'high':
+        return colorScheme.secondary; // Burgundy
+      default:
+        return colorScheme.primary;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final act = widget.activity;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -378,9 +371,8 @@ class _ActivityCardState extends State<_ActivityCard> {
       child: AnimatedScale(
         duration: const Duration(milliseconds: 130),
         scale: _pressed ? 0.98 : 1.0,
-        child: GlassPanel(
-          padding: const EdgeInsets.all(18),
-          radius: 22,
+        child: AppCard(
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -388,33 +380,35 @@ class _ActivityCardState extends State<_ActivityCard> {
                 children: [
                   Text(
                     act.emoji,
-                    style: const TextStyle(fontSize: 32),
+                    style: const TextStyle(fontSize: 36),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           act.name,
-                          style: const TextStyle(
-                            fontSize: 15,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: colorScheme.onSurface,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Row(
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
                           children: [
-                            _Badge(act.duration, AppColors.textSecondary),
-                            const SizedBox(width: 6),
+                            _Badge(act.duration, colorScheme.onSurface.withValues(alpha: 0.6)),
                             _Badge(
                               act.intensity,
-                              act.intensityColor,
+                              _getIntensityColor(act.intensity, colorScheme),
                               border: true,
                             ),
-                            const SizedBox(width: 6),
-                            _Badge(act.calories, AppColors.textSecondary),
+                            _Badge(act.calories, colorScheme.onSurface.withValues(alpha: 0.6)),
                           ],
                         ),
                       ],
@@ -423,15 +417,14 @@ class _ActivityCardState extends State<_ActivityCard> {
                   AnimatedRotation(
                     duration: const Duration(milliseconds: 280),
                     turns: _expanded ? 0.5 : 0,
-                    child: const Icon(
+                    child: Icon(
                       Icons.expand_more_rounded,
-                      color: AppColors.textTertiary,
-                      size: 22,
+                      color: colorScheme.onSurface.withValues(alpha: 0.4),
+                      size: 24,
                     ),
                   ),
                 ],
               ),
-              // Apple §3: interruptible expand — AnimatedSize
               AnimatedSize(
                 duration: const Duration(milliseconds: 320),
                 curve: Curves.easeOutCubic,
@@ -439,56 +432,45 @@ class _ActivityCardState extends State<_ActivityCard> {
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 14),
-                          Container(
-                            height: 1,
-                            color: AppColors.divider,
-                          ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 16),
                           Text(
                             act.desc,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                              height: 1.6,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                              height: 1.5,
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.star_rounded,
-                                color: AppColors.mint,
-                                size: 14,
+                                color: colorScheme.primary,
+                                size: 16,
                               ),
-                              const SizedBox(width: 6),
-                              Text(
-                                act.benefit,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.mint,
-                                  fontWeight: FontWeight.w600,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  act.benefit,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
-                            height: 42,
-                            child: ElevatedButton.icon(
+                            child: SecondaryButton(
                               onPressed: () {},
-                              icon: const Icon(Icons.add_rounded, size: 18),
-                              label: const Text('Add to This Week'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    AppColors.emerald.withValues(alpha: .15),
-                                foregroundColor: AppColors.emerald,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
+                              label: 'Add to This Week',
+                              icon: Icons.add_rounded,
                             ),
                           ),
                         ],
@@ -512,25 +494,23 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: border ? 0.12 : 0.0),
-        borderRadius: BorderRadius.circular(8),
-        border: border ? Border.all(color: color.withValues(alpha: .35)) : null,
+        color: color.withValues(alpha: border ? 0.1 : 0.0),
+        borderRadius: BorderRadius.circular(10),
+        border: border ? Border.all(color: color.withValues(alpha: 0.3)) : null,
       ),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 10,
-          color: border ? color : color,
+          fontSize: 11,
+          color: color,
           fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 }
-
-// ── Nearby facilities button ───────────────────────────────────────────────────
 
 class _NearbyButton extends StatefulWidget {
   @override
@@ -545,13 +525,14 @@ class _NearbyButtonState extends State<_NearbyButton> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      // Apple §7: sheet slides up from its natural origin (bottom)
       builder: (_) => const _NearbySheet(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -563,22 +544,22 @@ class _NearbyButtonState extends State<_NearbyButton> {
         duration: const Duration(milliseconds: 120),
         scale: _pressed ? 0.9 : 1.0,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.divider),
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
-          child: const Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.location_on_outlined, color: AppColors.cyan, size: 16),
-              SizedBox(height: 2),
+              Icon(Icons.location_on_outlined, color: colorScheme.primary, size: 18),
+              const SizedBox(height: 2),
               Text(
                 'Nearby',
                 style: TextStyle(
-                  fontSize: 9,
-                  color: AppColors.cyan,
+                  fontSize: 10,
+                  color: colorScheme.primary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -602,36 +583,39 @@ class _NearbySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Container(
-            width: 36,
+            width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.divider,
+              color: theme.dividerColor,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 20),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               children: [
-                Icon(Icons.location_on_rounded, color: AppColors.cyan, size: 20),
-                SizedBox(width: 8),
+                Icon(Icons.location_on_rounded, color: colorScheme.primary, size: 24),
+                const SizedBox(width: 12),
                 Text(
                   'Nearby Facilities',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -640,43 +624,43 @@ class _NearbySheet extends StatelessWidget {
           const SizedBox(height: 16),
           ..._facilities.map(
             (f) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
               leading: Container(
-                width: 42,
-                height: 42,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.emerald.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(13),
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.place_rounded,
-                  color: AppColors.emerald,
-                  size: 20,
+                  color: colorScheme.primary,
+                  size: 24,
                 ),
               ),
               title: Text(
                 f.name,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
+                style: TextStyle(
+                  color: colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontSize: 16,
                 ),
               ),
               subtitle: Text(
                 '${f.type} · ${f.distance} · ⭐ ${f.rating}',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
+                style: TextStyle(
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontSize: 13,
                 ),
               ),
-              trailing: const Icon(
+              trailing: Icon(
                 Icons.directions_rounded,
-                color: AppColors.cyan,
-                size: 20,
+                color: colorScheme.primary,
+                size: 24,
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
         ],
       ),
     );

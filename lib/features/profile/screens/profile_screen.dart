@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zindagi_plus/core/theme/app_theme.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
-import 'package:zindagi_plus/shared/widgets/premium_ui.dart';
+
+// ── Color constants (from design system) ──────────────────────────────────────
+const _kEmerald = Color(0xFF00674F);
+const _kBurgundy = Color(0xFF670018);
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -12,267 +14,299 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider);
 
-    return PremiumBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('Profile'),
-          automaticallyImplyLeading: false,
-          actions: [
-            // Edit button — Apple §1: respond on pointer-down
-            _TapScale(
-              onTap: () => context.push('/profile/edit'),
-              child: Container(
-                margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
+      appBar: AppBar(
+        title: const Text('Profile'),
+        automaticallyImplyLeading: false,
+        backgroundColor: const Color(0xFFF4F6F8),
+        scrolledUnderElevation: 0,
+        actions: [
+          TextButton.icon(
+            onPressed: () => context.push('/profile/edit'),
+            icon: Icon(Icons.edit_outlined, size: 16, color: _kEmerald),
+            label: Text(
+              'Edit',
+              style: TextStyle(
+                color: _kEmerald,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 100),
+        children: [
+          // ── Profile Header ────────────────────────────────────────────────
+          _ProfileHeader(user: user),
+
+          const SizedBox(height: 28),
+
+          // ── Health section ────────────────────────────────────────────────
+          _SectionLabel(label: 'Health'),
+          _ListGroup(
+            children: [
+              _ListRow(
+                icon: Icons.person_outline_rounded,
+                iconColor: _kEmerald,
+                title: 'Health Information',
+                subtitle: 'Age, weight, blood type',
+                onTap: () => context.push('/profile/edit'),
+              ),
+              _ListRow(
+                icon: Icons.history_rounded,
+                iconColor: _kEmerald,
+                title: 'Health Timeline',
+                subtitle: 'Your health journey',
+                onTap: () => context.push('/timeline'),
+              ),
+              _ListRow(
+                icon: Icons.medication_outlined,
+                iconColor: _kEmerald,
+                title: 'Medications',
+                subtitle: 'Active prescriptions & reminders',
+                onTap: () => context.push('/medications'),
+              ),
+              _ListRow(
+                icon: Icons.monitor_heart_outlined,
+                iconColor: _kEmerald,
+                title: 'Health Score',
+                subtitle: 'View score breakdown',
+                onTap: () => context.push('/score-breakdown'),
+                isLast: true,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 28),
+
+          // ── Activity & Nutrition section ──────────────────────────────────
+          _SectionLabel(label: 'Activity & Nutrition'),
+          _ListGroup(
+            children: [
+              _ListRow(
+                icon: Icons.directions_run_rounded,
+                iconColor: _kEmerald,
+                title: 'Activity',
+                subtitle: 'Exercise plans & tracking',
+                onTap: () => context.push('/activities'),
+              ),
+              _ListRow(
+                icon: Icons.restaurant_outlined,
+                iconColor: _kEmerald,
+                title: 'Meals',
+                subtitle: 'AI-curated meal recommendations',
+                onTap: () => context.go('/meals'),
+              ),
+              _ListRow(
+                icon: Icons.auto_awesome_outlined,
+                iconColor: _kEmerald,
+                title: 'AI Recommendations',
+                subtitle: 'Personalised health insights',
+                onTap: () => context.push('/recommendation/1'),
+                isLast: true,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 28),
+
+          // ── Account section ───────────────────────────────────────────────
+          _SectionLabel(label: 'Account'),
+          _ListGroup(
+            children: [
+              _ListRow(
+                icon: Icons.settings_outlined,
+                iconColor: const Color(0xFF6B7280),
+                title: 'Settings',
+                onTap: () => context.push('/settings'),
+              ),
+              _ListRow(
+                icon: Icons.help_outline_rounded,
+                iconColor: const Color(0xFF6B7280),
+                title: 'Help & Support',
+                onTap: () {},
+                isLast: true,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 28),
+
+          // ── Sign Out ──────────────────────────────────────────────────────
+          _ListGroup(
+            children: [
+              _ListRow(
+                icon: Icons.logout_rounded,
+                iconColor: _kBurgundy,
+                title: 'Sign Out',
+                titleColor: _kBurgundy,
+                showChevron: false,
+                onTap: () => ref.read(authNotifierProvider.notifier).logout(),
+                isLast: true,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Profile Header ─────────────────────────────────────────────────────────────
+
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.user});
+  final dynamic user;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = (user?.name?.isNotEmpty == true)
+        ? (user!.name as String)[0].toUpperCase()
+        : 'U';
+    final name = user?.name ?? 'User';
+    final email = user?.email ?? '';
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+      child: Column(
+        children: [
+          // Avatar with emerald ring
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
                 decoration: BoxDecoration(
-                  color: AppColors.emerald.withValues(alpha: .14),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.emerald.withValues(alpha: .35)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.edit_outlined, color: AppColors.mint, size: 14),
-                    SizedBox(width: 5),
-                    Text(
-                      'Edit',
-                      style: TextStyle(
-                        color: AppColors.mint,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF00674F), Color(0xFF008969)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _kEmerald.withValues(alpha: 0.25),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-          children: [
-            // ── Avatar card ─────────────────────────────────────────────
-            GlassPanel(
-              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-              radius: 30,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF174D46), Color(0xFF162A31)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 84,
-                    height: 84,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.emerald, Color(0xFF238F87)],
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.emerald.withValues(alpha: .35),
-                          blurRadius: 22,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        user?.name.isNotEmpty == true
-                            ? user!.name[0].toUpperCase()
-                            : 'U',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    user?.name ?? 'User',
+                child: Center(
+                  child: Text(
+                    initials,
                     style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 38,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    user?.email ?? '',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.emerald.withValues(alpha: .18),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      '✨  Premium Member',
-                      style: TextStyle(
-                        color: AppColors.mint,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF181C22),
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            email,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Premium badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: _kEmerald.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _kEmerald.withValues(alpha: 0.2),
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            // ── Health Profile ──────────────────────────────────────────
-            _SectionHeader('Health Profile'),
-            _InfoTile(icon: Icons.cake_outlined, label: 'Age', value: '24 years'),
-            _InfoTile(
-                icon: Icons.monitor_weight_outlined,
-                label: 'Weight',
-                value: '72 kg'),
-            _InfoTile(
-                icon: Icons.height_rounded, label: 'Height', value: '175 cm'),
-            _InfoTile(
-                icon: Icons.bloodtype_outlined,
-                label: 'Blood Type',
-                value: 'B+'),
-
-            const SizedBox(height: 20),
-
-            // ── Conditions ──────────────────────────────────────────────
-            _SectionHeader('Active Conditions'),
-            _InfoTile(
-              icon: Icons.local_hospital_outlined,
-              label: 'Type 2 Diabetes',
-              value: 'Managed',
-              valueColor: AppColors.warning,
+            child: const Text(
+              '✨  Premium Member',
+              style: TextStyle(
+                color: _kEmerald,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            _InfoTile(
-              icon: Icons.local_hospital_outlined,
-              label: 'Vitamin D Deficiency',
-              value: 'Monitored',
-              valueColor: AppColors.blue,
-            ),
+          ),
 
-            const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-            // ── Quick Links ─────────────────────────────────────────────
-            _SectionHeader('Health Tools'),
-            _NavTile(
-              icon: Icons.medication_outlined,
-              label: 'Medications',
-              onTap: () => context.push('/medications'),
-            ),
-            _NavTile(
-              icon: Icons.history_rounded,
-              label: 'Health Timeline',
-              onTap: () => context.push('/timeline'),
-            ),
-            _NavTile(
-              icon: Icons.directions_run_rounded,
-              label: 'Activity Plan',
-              onTap: () => context.push('/activities'),
-            ),
-
-            const SizedBox(height: 20),
-
-            // ── Settings ────────────────────────────────────────────────
-            _SectionHeader('Account'),
-            _NavTile(
-              icon: Icons.settings_outlined,
-              label: 'Settings',
-              onTap: () => context.push('/settings'),
-            ),
-            _NavTile(
-              icon: Icons.help_outline_rounded,
-              label: 'Help & Support',
-              onTap: () {},
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── Logout ──────────────────────────────────────────────────
-            _SignOutButton(
-              onPressed: () =>
-                  ref.read(authNotifierProvider.notifier).logout(),
-            ),
-
-            const SizedBox(height: 32),
-          ],
-        ),
+          // Compact health stats bar
+          Row(
+            children: [
+              _StatCell(value: '72 kg', label: 'Weight'),
+              _StatDivider(),
+              _StatCell(value: '175 cm', label: 'Height'),
+              _StatDivider(),
+              _StatCell(value: 'B+', label: 'Blood Type'),
+              _StatDivider(),
+              _StatCell(value: '24', label: 'Age'),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
-  final String title;
+class _StatCell extends StatelessWidget {
+  const _StatCell({required this.value, required this.label});
+  final String value, label;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        title.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: AppColors.textTertiary,
-          letterSpacing: 1.1,
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoTile extends StatelessWidget {
-  const _InfoTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
-  final IconData icon;
-  final String label, value;
-  final Color? valueColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: .78),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Row(
+    return Expanded(
+      child: Column(
         children: [
-          Icon(icon, color: AppColors.emerald, size: 20),
-          const SizedBox(width: 12),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF181C22),
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: TextStyle(
-              color: valueColor ?? AppColors.textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Color(0xFF9CA3AF),
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -281,147 +315,182 @@ class _InfoTile extends StatelessWidget {
   }
 }
 
-class _NavTile extends StatefulWidget {
-  const _NavTile({
+class _StatDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 28,
+      color: const Color(0xFFE5E7EB),
+    );
+  }
+}
+
+// ── Section label ──────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, bottom: 8),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF9CA3AF),
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+}
+
+// ── List group (white card container with internal dividers) ───────────────────
+
+class _ListGroup extends StatelessWidget {
+  const _ListGroup({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(children: children),
+      ),
+    );
+  }
+}
+
+// ── List row ───────────────────────────────────────────────────────────────────
+
+class _ListRow extends StatefulWidget {
+  const _ListRow({
     required this.icon,
-    required this.label,
+    required this.iconColor,
+    required this.title,
+    this.subtitle,
+    this.titleColor,
+    this.showChevron = true,
+    this.isLast = false,
     required this.onTap,
   });
+
   final IconData icon;
-  final String label;
+  final Color iconColor;
+  final String title;
+  final String? subtitle;
+  final Color? titleColor;
+  final bool showChevron;
+  final bool isLast;
   final VoidCallback onTap;
 
   @override
-  State<_NavTile> createState() => _NavTileState();
+  State<_ListRow> createState() => _ListRowState();
 }
 
-class _NavTileState extends State<_NavTile> {
+class _ListRowState extends State<_ListRow> {
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 130),
-        scale: _pressed ? 0.98 : 1.0,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: .78),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Row(
-            children: [
-              Icon(widget.icon, color: AppColors.textSecondary, size: 20),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  widget.label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
+    final iconBg = widget.iconColor.withValues(alpha: 0.12);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) {
+            setState(() => _pressed = false);
+            widget.onTap();
+          },
+          onTapCancel: () => setState(() => _pressed = false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 100),
+            color: _pressed
+                ? const Color(0xFFF0F4F3)
+                : Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            child: Row(
+              children: [
+                // Icon container
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(widget.icon, size: 18, color: widget.iconColor),
+                ),
+                const SizedBox(width: 14),
+                // Title + optional subtitle
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: widget.titleColor ?? const Color(0xFF181C22),
+                        ),
+                      ),
+                      if (widget.subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textTertiary,
-                size: 20,
-              ),
-            ],
+                if (widget.showChevron)
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: Color(0xFFD1D5DB),
+                  ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SignOutButton extends StatefulWidget {
-  const _SignOutButton({required this.onPressed});
-  final VoidCallback onPressed;
-
-  @override
-  State<_SignOutButton> createState() => _SignOutButtonState();
-}
-
-class _SignOutButtonState extends State<_SignOutButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onPressed();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 130),
-        scale: _pressed ? 0.97 : 1.0,
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: AppColors.error.withValues(alpha: .1),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.error.withValues(alpha: .3)),
+        if (!widget.isLast)
+          const Divider(
+            height: 1,
+            thickness: 1,
+            indent: 66,
+            endIndent: 0,
+            color: Color(0xFFF3F4F6),
           ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.logout_rounded, color: AppColors.error, size: 20),
-              SizedBox(width: 10),
-              Text(
-                'Sign Out',
-                style: TextStyle(
-                  color: AppColors.error,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TapScale extends StatefulWidget {
-  const _TapScale({required this.child, required this.onTap});
-  final Widget child;
-  final VoidCallback onTap;
-
-  @override
-  State<_TapScale> createState() => _TapScaleState();
-}
-
-class _TapScaleState extends State<_TapScale> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 120),
-        scale: _pressed ? 0.93 : 1.0,
-        child: widget.child,
-      ),
+      ],
     );
   }
 }

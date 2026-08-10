@@ -1,8 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zindagi_plus/core/theme/app_theme.dart';
-import 'package:zindagi_plus/shared/widgets/premium_ui.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class ReportProcessingScreen extends StatefulWidget {
   const ReportProcessingScreen({super.key, this.fileName = 'lab_report.jpg'});
@@ -20,25 +19,25 @@ class _ReportProcessingScreenState extends State<ReportProcessingScreen>
       icon: Icons.document_scanner_outlined,
       label: 'Reading document',
       detail: 'Extracting text via OCR engine',
-      color: AppColors.cyan,
+      color: Color(0xFF00674F), // Emerald
     ),
     (
       icon: Icons.biotech_outlined,
       label: 'Extracting biomarkers',
       detail: 'Identifying 200+ health markers',
-      color: AppColors.emerald,
+      color: Color(0xFF00674F), // Emerald
     ),
     (
       icon: Icons.auto_awesome_outlined,
       label: 'Running AI analysis',
       detail: 'Comparing against 50M+ records',
-      color: AppColors.blue,
+      color: Color(0xFF00674F), // Emerald
     ),
     (
       icon: Icons.insights_outlined,
       label: 'Generating insights',
       detail: 'Personalising for your profile',
-      color: AppColors.mint,
+      color: Color(0xFF00674F), // Emerald
     ),
   ];
 
@@ -127,142 +126,142 @@ class _ReportProcessingScreenState extends State<ReportProcessingScreen>
 
   @override
   Widget build(BuildContext context) {
-    return PremiumBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 48),
+    final colorScheme = Theme.of(context).colorScheme;
+    final dividerColor = Theme.of(context).dividerColor;
+    
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 48),
 
-                // ── Header ───────────────────────────────────────────────────
-                const Text(
-                  'Analysing Report',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.5,
-                  ),
+              // ── Header ───────────────────────────────────────────────────
+              Text(
+                'Analysing Report',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: colorScheme.onSurface,
+                  letterSpacing: -0.5,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  widget.fileName,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                widget.fileName,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
+              ),
 
-                const SizedBox(height: 44),
+              const SizedBox(height: 44),
 
-                // ── Progress ring ────────────────────────────────────────────
-                // Apple §1: continuous feedback during operation, not just at end
-                Center(
-                  child: AnimatedBuilder(
-                    animation: Listenable.merge([_pulseCtrl]),
-                    builder: (_, _) {
-                      final glowAlpha = 0.18 + _pulseCtrl.value * 0.08;
-                      return Container(
-                        width: 180,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.cyan.withValues(alpha: glowAlpha),
-                              blurRadius: 48,
-                              spreadRadius: 8,
-                            ),
-                          ],
-                        ),
-                        child: CustomPaint(
-                          painter: _RingPainter(_overallProgress),
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
+              // ── Progress ring ────────────────────────────────────────────
+              // Apple §1: continuous feedback during operation, not just at end
+              Center(
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_pulseCtrl]),
+                  builder: (_, _) {
+                    final glowAlpha = 0.18 + _pulseCtrl.value * 0.08;
+                    return Container(
+                      width: 180,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.cyan.withValues(alpha: glowAlpha),
+                            blurRadius: 48,
+                            spreadRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: CustomPaint(
+                        painter: _RingPainter(_overallProgress, dividerColor),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${(_overallProgress * 100).round()}%',
+                                style: TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w800,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                              if (!_done)
                                 Text(
-                                  '${(_overallProgress * 100).round()}%',
-                                  style: const TextStyle(
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
+                                  '~${_secondsRemaining}s left',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                  ),
+                                )
+                              else
+                                Text(
+                                  'Done ✓',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                if (!_done)
-                                  Text(
-                                    '~${_secondsRemaining}s left',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  )
-                                else
-                                  const Text(
-                                    'Done ✓',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.emerald,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                              ],
-                            ),
+                            ],
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
+              ),
 
-                const SizedBox(height: 44),
+              const SizedBox(height: 44),
 
-                // ── Step list ────────────────────────────────────────────────
-                // Apple §8: each step hints at the direction of processing
-                ...List.generate(4, (i) {
-                  final done = i < _currentStep || _done;
-                  final active = i == _currentStep && !_done;
-                  return AnimatedBuilder(
-                    animation: _stepCtls[i],
-                    builder: (_, _) {
-                      // easeOutBack gives spring-like overshoot on entry (Apple §4)
-                      final t = CurvedAnimation(
-                        parent: _stepCtls[i],
-                        curve: Curves.easeOutBack,
-                      ).value.clamp(0.0, 1.0);
-                      return Opacity(
-                        opacity: t,
-                        child: Transform.translate(
-                          offset: Offset(0, (1 - t) * 22),
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _StepTile(
-                              icon: _steps[i].icon,
-                              label: _steps[i].label,
-                              detail: _steps[i].detail,
-                              accentColor: _steps[i].color,
-                              done: done,
-                              active: active,
-                              progress: active ? _stepProgress : (done ? 1.0 : 0.0),
-                            ),
+              // ── Step list ────────────────────────────────────────────────
+              // Apple §8: each step hints at the direction of processing
+              ...List.generate(4, (i) {
+                final done = i < _currentStep || _done;
+                final active = i == _currentStep && !_done;
+                return AnimatedBuilder(
+                  animation: _stepCtls[i],
+                  builder: (_, _) {
+                    // easeOutBack gives spring-like overshoot on entry (Apple §4)
+                    final t = CurvedAnimation(
+                      parent: _stepCtls[i],
+                      curve: Curves.easeOutBack,
+                    ).value.clamp(0.0, 1.0);
+                    return Opacity(
+                      opacity: t,
+                      child: Transform.translate(
+                        offset: Offset(0, (1 - t) * 22),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _StepTile(
+                            icon: _steps[i].icon,
+                            label: _steps[i].label,
+                            detail: _steps[i].detail,
+                            accentColor: _steps[i].color,
+                            done: done,
+                            active: active,
+                            progress: active ? _stepProgress : (done ? 1.0 : 0.0),
                           ),
                         ),
-                      );
-                    },
-                  );
-                }),
+                      ),
+                    );
+                  },
+                );
+              }),
 
-                const SizedBox(height: 32),
-              ],
-            ),
+              const SizedBox(height: 32),
+            ],
           ),
         ),
       ),
@@ -291,19 +290,11 @@ class _StepTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassPanel(
+    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    
+    return AppCard(
       padding: const EdgeInsets.all(16),
-      radius: 22,
-      gradient: active
-          ? LinearGradient(
-              colors: [
-                accentColor.withValues(alpha: .13),
-                accentColor.withValues(alpha: .04),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            )
-          : null,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -315,18 +306,18 @@ class _StepTile extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               color: done || active
-                  ? accentColor.withValues(alpha: .18)
-                  : AppColors.surface,
+                  ? accentColor.withValues(alpha: 0.18)
+                  : colorScheme.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: done || active
-                    ? accentColor.withValues(alpha: .45)
-                    : AppColors.divider,
+                    ? accentColor.withValues(alpha: 0.45)
+                    : theme.dividerColor,
               ),
             ),
             child: Icon(
               done ? Icons.check_rounded : icon,
-              color: done || active ? accentColor : AppColors.textTertiary,
+              color: done || active ? accentColor : colorScheme.onSurface.withValues(alpha: 0.4),
               size: 20,
             ),
           ),
@@ -341,17 +332,17 @@ class _StepTile extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: active || done
-                        ? AppColors.textPrimary
-                        : AppColors.textTertiary,
+                        ? colorScheme.onSurface
+                        : colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   child: Text(label),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   detail,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.textSecondary,
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 // Apple §1: progress bar updates 1:1 with real processing
@@ -366,7 +357,7 @@ class _StepTile extends StatelessWidget {
                       builder: (_, v, _) => LinearProgressIndicator(
                         value: v,
                         minHeight: 4,
-                        backgroundColor: AppColors.divider,
+                        backgroundColor: theme.dividerColor,
                         valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                       ),
                     ),
@@ -384,8 +375,9 @@ class _StepTile extends StatelessWidget {
 // ── Ring painter ───────────────────────────────────────────────────────────────
 
 class _RingPainter extends CustomPainter {
-  const _RingPainter(this.progress);
+  const _RingPainter(this.progress, this.dividerColor);
   final double progress;
+  final Color dividerColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -400,7 +392,7 @@ class _RingPainter extends CustomPainter {
       math.pi * 2,
       false,
       Paint()
-        ..color = AppColors.divider
+        ..color = dividerColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = 12
         ..strokeCap = StrokeCap.round,
@@ -415,7 +407,7 @@ class _RingPainter extends CustomPainter {
         false,
         Paint()
           ..shader = SweepGradient(
-            colors: const [AppColors.cyan, AppColors.emerald, AppColors.mint],
+            colors: const [Colors.cyan, Color(0xFF00674F), Colors.teal], // Cyan to Emerald to Teal
             startAngle: 0,
             endAngle: math.pi * 2,
             transform: const GradientRotation(-math.pi / 2),

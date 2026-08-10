@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:zindagi_plus/core/theme/app_theme.dart';
-import 'package:zindagi_plus/shared/widgets/premium_ui.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 // ── Mock timeline events ───────────────────────────────────────────────────────
 
@@ -24,7 +23,7 @@ const _events = [
     title: 'Morning walk completed',
     subtitle: '4,800 steps · 28 min · 110 kcal burned',
     icon: Icons.directions_walk_rounded,
-    color: AppColors.cyan,
+    color: Colors.blue,
     category: 'Activity',
   ),
   _Event(
@@ -32,7 +31,7 @@ const _events = [
     title: 'Metformin taken',
     subtitle: '500mg · On time at 8:03 AM',
     icon: Icons.medication_rounded,
-    color: AppColors.emerald,
+    color: Color(0xFF00674F), // Emerald
     category: 'Medication',
   ),
   _Event(
@@ -40,7 +39,7 @@ const _events = [
     title: 'Blood report analysed',
     subtitle: '8 biomarkers extracted · 3 require attention',
     icon: Icons.biotech_outlined,
-    color: AppColors.blue,
+    color: Colors.purple,
     category: 'Report',
   ),
   _Event(
@@ -48,7 +47,7 @@ const _events = [
     title: 'Meal plan followed',
     subtitle: 'Masoor Dal Khichdi · Matched your targets',
     icon: Icons.restaurant_outlined,
-    color: AppColors.mint,
+    color: Color(0xFF00674F), // Emerald
     category: 'Nutrition',
   ),
   _Event(
@@ -56,7 +55,7 @@ const _events = [
     title: 'HbA1c borderline alert',
     subtitle: '6.8% detected — action recommended',
     icon: Icons.warning_amber_rounded,
-    color: AppColors.warning,
+    color: Colors.orange,
     category: 'Alert',
   ),
   _Event(
@@ -64,7 +63,7 @@ const _events = [
     title: 'Yoga session completed',
     subtitle: '20 min · Cortisol reduction logged',
     icon: Icons.self_improvement_rounded,
-    color: AppColors.cyan,
+    color: Colors.blue,
     category: 'Activity',
   ),
   _Event(
@@ -72,7 +71,7 @@ const _events = [
     title: 'Vitamin D supplement added',
     subtitle: '2000 IU daily · Starting today',
     icon: Icons.wb_sunny_outlined,
-    color: AppColors.warning,
+    color: Colors.orange,
     category: 'Medication',
   ),
   _Event(
@@ -80,7 +79,7 @@ const _events = [
     title: 'Profile completed',
     subtitle: 'Height, weight, blood type recorded',
     icon: Icons.person_rounded,
-    color: AppColors.emerald,
+    color: Color(0xFF00674F), // Emerald
     category: 'Profile',
   ),
   _Event(
@@ -88,7 +87,7 @@ const _events = [
     title: 'Account created',
     subtitle: 'Welcome to Zindagi+! 🎉',
     icon: Icons.favorite_rounded,
-    color: AppColors.error,
+    color: Color(0xFF670018), // Burgundy
     category: 'Profile',
   ),
 ];
@@ -157,97 +156,94 @@ class _HealthTimelineScreenState extends State<HealthTimelineScreen>
   Widget build(BuildContext context) {
     final filtered = _filteredEvents;
 
-    return PremiumBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          ),
-          title: const Text('Health Timeline'),
+    return Scaffold(
+      appBar: AppBar(
+        leading: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
         ),
-        body: Column(
-          children: [
-            // ── Period filter ────────────────────────────────────────────
-            SizedBox(
-              height: 42,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _periods.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => _FilterChip(
-                  label: _periods[i],
-                  selected: _selectedPeriod == _periods[i],
-                  onTap: () =>
-                      setState(() => _selectedPeriod = _periods[i]),
-                ),
+        title: const Text('Health Timeline'),
+      ),
+      body: Column(
+        children: [
+          // ── Period filter ────────────────────────────────────────────
+          SizedBox(
+            height: 42,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: _periods.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (_, i) => _FilterChip(
+                label: _periods[i],
+                selected: _selectedPeriod == _periods[i],
+                onTap: () =>
+                    setState(() => _selectedPeriod = _periods[i]),
               ),
             ),
+          ),
 
-            const SizedBox(height: 10),
+          const SizedBox(height: 10),
 
-            // ── Category filter ──────────────────────────────────────────
-            SizedBox(
-              height: 36,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _filterCategories.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 6),
-                itemBuilder: (_, i) => _SmallChip(
-                  label: _filterCategories[i],
-                  selected: _selectedCategory == _filterCategories[i],
-                  onTap: () {
-                    setState(() => _selectedCategory = _filterCategories[i]);
-                    _animateItems();
-                  },
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Timeline ─────────────────────────────────────────────────
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
-                itemCount: filtered.length,
-                itemBuilder: (_, i) {
-                  final event = filtered[i];
-                  final globalIndex = _events.indexOf(event);
-                  final ctlIndex =
-                      globalIndex < _itemCtls.length ? globalIndex : 0;
-                  final isLast = i == filtered.length - 1;
-
-                  return AnimatedBuilder(
-                    animation: _itemCtls[ctlIndex],
-                    builder: (_, child) {
-                      final t = CurvedAnimation(
-                        parent: _itemCtls[ctlIndex],
-                        curve: Curves.easeOutBack,
-                      ).value.clamp(0.0, 1.0);
-                      return Opacity(
-                        opacity: t,
-                        child: Transform.translate(
-                          offset: Offset((1 - t) * 20, 0),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: _TimelineItem(
-                      event: event,
-                      isLast: isLast,
-                      showDateLabel: i == 0 ||
-                          filtered[i].date != filtered[i - 1].date,
-                    ),
-                  );
+          // ── Category filter ──────────────────────────────────────────
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: _filterCategories.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
+              itemBuilder: (_, i) => _SmallChip(
+                label: _filterCategories[i],
+                selected: _selectedCategory == _filterCategories[i],
+                onTap: () {
+                  setState(() => _selectedCategory = _filterCategories[i]);
+                  _animateItems();
                 },
               ),
             ),
-          ],
-        ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Timeline ─────────────────────────────────────────────────
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
+              itemCount: filtered.length,
+              itemBuilder: (_, i) {
+                final event = filtered[i];
+                final globalIndex = _events.indexOf(event);
+                final ctlIndex =
+                    globalIndex < _itemCtls.length ? globalIndex : 0;
+                final isLast = i == filtered.length - 1;
+
+                return AnimatedBuilder(
+                  animation: _itemCtls[ctlIndex],
+                  builder: (_, child) {
+                    final t = CurvedAnimation(
+                      parent: _itemCtls[ctlIndex],
+                      curve: Curves.easeOutBack,
+                    ).value.clamp(0.0, 1.0);
+                    return Opacity(
+                      opacity: t,
+                      child: Transform.translate(
+                        offset: Offset((1 - t) * 20, 0),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _TimelineItem(
+                    event: event,
+                    isLast: isLast,
+                    showDateLabel: i == 0 ||
+                        filtered[i].date != filtered[i - 1].date,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -266,6 +262,9 @@ class _TimelineItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -275,9 +274,9 @@ class _TimelineItem extends StatelessWidget {
             child: Text(
               event.date,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textTertiary,
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
                 letterSpacing: 0.5,
               ),
             ),
@@ -295,10 +294,10 @@ class _TimelineItem extends StatelessWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: event.color.withValues(alpha: .16),
+                        color: event.color.withValues(alpha: 0.16),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: event.color.withValues(alpha: .4),
+                          color: event.color.withValues(alpha: 0.4),
                         ),
                       ),
                       child: Icon(event.icon, color: event.color, size: 17),
@@ -308,7 +307,7 @@ class _TimelineItem extends StatelessWidget {
                         child: Center(
                           child: Container(
                             width: 2,
-                            color: AppColors.divider,
+                            color: theme.dividerColor,
                           ),
                         ),
                       ),
@@ -320,9 +319,8 @@ class _TimelineItem extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
-                  child: GlassPanel(
+                  child: AppCard(
                     padding: const EdgeInsets.all(14),
-                    radius: 18,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -332,10 +330,10 @@ class _TimelineItem extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 event.title,
-                                style: const TextStyle(
-                                  fontSize: 13,
+                                style: TextStyle(
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
+                                  color: colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -345,13 +343,13 @@ class _TimelineItem extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: event.color.withValues(alpha: .12),
+                                color: event.color.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 event.category,
                                 style: TextStyle(
-                                  fontSize: 9,
+                                  fontSize: 10,
                                   color: event.color,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -359,12 +357,12 @@ class _TimelineItem extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           event.subtitle,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
                             height: 1.45,
                           ),
                         ),
@@ -402,6 +400,8 @@ class _FilterChipState extends State<_FilterChip> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -418,21 +418,21 @@ class _FilterChipState extends State<_FilterChip> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: widget.selected
-                ? AppColors.emerald.withValues(alpha: .16)
-                : AppColors.surface,
+                ? colorScheme.primary
+                : colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: widget.selected
-                  ? AppColors.emerald.withValues(alpha: .5)
-                  : AppColors.divider,
+                  ? colorScheme.primary
+                  : Theme.of(context).dividerColor,
             ),
           ),
           child: Text(
             widget.label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: widget.selected ? AppColors.mint : AppColors.textSecondary,
+              color: widget.selected ? colorScheme.onPrimary : colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ),
@@ -460,6 +460,8 @@ class _SmallChipState extends State<_SmallChip> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -475,13 +477,13 @@ class _SmallChipState extends State<_SmallChip> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
             color: widget.selected
-                ? AppColors.blue.withValues(alpha: .15)
+                ? Colors.blue.withValues(alpha: 0.15)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: widget.selected
-                  ? AppColors.blue.withValues(alpha: .4)
-                  : AppColors.divider,
+                  ? Colors.blue.withValues(alpha: 0.4)
+                  : Theme.of(context).dividerColor,
             ),
           ),
           child: Text(
@@ -489,7 +491,7 @@ class _SmallChipState extends State<_SmallChip> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: widget.selected ? AppColors.blue : AppColors.textTertiary,
+              color: widget.selected ? Colors.blue : colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ),

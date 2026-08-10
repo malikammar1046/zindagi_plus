@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zindagi_plus/data/models/user.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -34,7 +35,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
-    // Mock: always succeeds after a simulated delay.
     await Future.delayed(const Duration(seconds: 1));
 
     if (!mounted) return;
@@ -46,25 +46,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       email: _emailCtrl.text.trim(),
     );
     ref.read(authNotifierProvider.notifier).setUser(user);
-    // GoRouter redirect navigates to /dashboard automatically.
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: const Color(0xFF1A1A2E),
-        title: const Text(
-          'Create Account',
-          style: TextStyle(
-            color: Color(0xFF1A1A2E),
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        title: const Text('Create Account'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => context.go('/login'),
@@ -81,18 +72,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 12),
 
                 // ── Heading ────────────────────────────────────────────────
-                const Text(
+                Text(
                   'Start your journey 🌱',
-                  style: TextStyle(
-                    fontSize: 24,
+                  style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E),
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Create a free account to track your health',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
 
                 const SizedBox(height: 32),
@@ -111,7 +102,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       : null,
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 // ── Email ──────────────────────────────────────────────────
                 TextFormField(
@@ -128,7 +119,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           : null,
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 // ── Password ───────────────────────────────────────────────
                 TextFormField(
@@ -150,7 +141,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       v == null || v.length < 6 ? 'Min. 6 characters' : null,
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 // ── Confirm Password ───────────────────────────────────────
                 TextFormField(
@@ -177,40 +168,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 32),
 
                 // ── Register button ────────────────────────────────────────
-                SizedBox(
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _register,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Text('Create Account'),
-                  ),
+                PrimaryButton(
+                  text: 'Create Account',
+                  onPressed: _isLoading ? null : _register,
+                  isLoading: _isLoading,
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Already have an account?  ',
-                        style: TextStyle(
-                            color: Colors.grey[600], fontSize: 14)),
+                    Text(
+                      'Already have an account?  ',
+                      style: TextStyle(
+                        color: colorScheme.onSurface.withValues(alpha: 0.6), 
+                        fontSize: 14,
+                      ),
+                    ),
                     TextButton(
                       onPressed: () => context.go('/login'),
                       style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        foregroundColor: colorScheme.primary,
+                      ),
                       child: const Text(
                         'Sign In',
                         style: TextStyle(
-                          color: Color(0xFF1E6B4F),
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontSize: 14,
                         ),
                       ),

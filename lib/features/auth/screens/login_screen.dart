@@ -4,8 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
 import 'package:zindagi_plus/providers/repository_providers.dart';
-import 'package:zindagi_plus/core/theme/app_theme.dart';
-import 'package:zindagi_plus/shared/widgets/premium_ui.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -47,7 +46,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     switch (result) {
       case Success(data: final user):
         ref.read(authNotifierProvider.notifier).setUser(user);
-      // GoRouter redirect automatically navigates to /dashboard.
       case Failure(message: final msg):
         setState(() => _errorMessage = msg);
     }
@@ -55,8 +53,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PremiumBackground(child: Scaffold(
-      backgroundColor: Colors.transparent,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -73,37 +73,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1E6B4F), Color(0xFF2D9C73)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: colorScheme.primary,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF1E6B4F).withValues(alpha: 0.35),
+                          color: colorScheme.primary.withValues(alpha: 0.35),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.favorite_rounded,
-                      color: Colors.white,
-                      size: 40,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Image.asset(
+                        'assets/images/Icon.png',
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
-                const Center(
+                Center(
                   child: Text(
                     'Zindagi+',
-                    style: TextStyle(
-                      fontSize: 30,
+                    style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -112,25 +108,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Center(
                   child: Text(
                     'Your personal health companion',
-                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
                   ),
                 ),
 
                 const SizedBox(height: 44),
 
                 // ── Heading ────────────────────────────────────────────────
-                const Text(
+                Text(
                   'Welcome back 👋',
-                  style: TextStyle(
-                    fontSize: 22,
+                  style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Sign in to continue your health journey',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
                 ),
 
                 const SizedBox(height: 28),
@@ -150,7 +148,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : null,
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 // ── Password ───────────────────────────────────────────────
                 TextFormField(
@@ -177,24 +175,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 // ── Error banner ───────────────────────────────────────────
                 if (_errorMessage != null) ...[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.red[200]!),
+                      color: colorScheme.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colorScheme.error.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline,
-                            color: Colors.red, size: 18),
+                        Icon(Icons.error_outline, color: colorScheme.error, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: const TextStyle(
-                                color: Colors.red, fontSize: 13),
+                            style: TextStyle(color: colorScheme.error, fontSize: 13),
                           ),
                         ),
                       ],
@@ -205,47 +201,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 28),
 
                 // ── Login button ───────────────────────────────────────────
-                PremiumButton(label: 'Sign In', onPressed: _isLoading ? null : _login, loading: _isLoading, icon: Icons.arrow_forward_rounded),
+                PrimaryButton(
+                  text: 'Sign In',
+                  onPressed: _isLoading ? null : _login,
+                  isLoading: _isLoading,
+                  icon: Icons.arrow_forward_rounded,
+                ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 // ── Demo hint ──────────────────────────────────────────────
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E6B4F).withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(10),
+                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
+                  child: Text(
                     '💡  Demo credentials: test@test.com / password',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        fontSize: 12, color: Color(0xFF1E6B4F)),
+                      fontSize: 12, 
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
                 // ── Register link ──────────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text("Don't have an account?  ",
-                        style: TextStyle(
-                            color: Colors.grey[600], fontSize: 14)),
+                    Text(
+                      "Don't have an account?  ",
+                      style: TextStyle(
+                        color: colorScheme.onSurface.withValues(alpha: 0.6), 
+                        fontSize: 14,
+                      ),
+                    ),
                     TextButton(
                       onPressed: () => context.go('/register'),
                       style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap),
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        foregroundColor: colorScheme.primary,
+                      ),
                       child: const Text(
                         'Create Account',
                         style: TextStyle(
-                          color: Color(0xFF1E6B4F),
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontSize: 14,
                         ),
                       ),
@@ -259,6 +266,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
-    ));
+    );
   }
 }

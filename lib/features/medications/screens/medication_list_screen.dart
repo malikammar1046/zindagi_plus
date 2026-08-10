@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:zindagi_plus/core/theme/app_theme.dart';
-import 'package:zindagi_plus/shared/widgets/premium_ui.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 // ── Mock data ──────────────────────────────────────────────────────────────────
 
@@ -30,7 +29,7 @@ final _medications = [
     time: '8:00 AM — With breakfast',
     status: _MedStatus.taken,
     icon: Icons.medication_rounded,
-    color: AppColors.emerald,
+    color: const Color(0xFF00674F), // Emerald
     note: 'For blood glucose control',
   ),
   _Medication(
@@ -39,7 +38,7 @@ final _medications = [
     time: '1:00 PM — With lunch',
     status: _MedStatus.pending,
     icon: Icons.wb_sunny_outlined,
-    color: AppColors.warning,
+    color: Colors.orange,
     note: 'Deficiency correction',
   ),
   _Medication(
@@ -48,7 +47,7 @@ final _medications = [
     time: '8:00 PM — With dinner',
     status: _MedStatus.pending,
     icon: Icons.water_drop_outlined,
-    color: AppColors.cyan,
+    color: Colors.blue,
     note: 'For LDL cholesterol support',
   ),
   _Medication(
@@ -57,7 +56,7 @@ final _medications = [
     time: '8:00 PM — With dinner',
     status: _MedStatus.missed,
     icon: Icons.medication_rounded,
-    color: AppColors.error,
+    color: const Color(0xFF670018), // Burgundy
     note: 'Missed yesterday',
   ),
 ];
@@ -79,7 +78,7 @@ class _MedicationListScreenState extends State<MedicationListScreen>
   int get _takenCount =>
       _medications.where((m) => m.status == _MedStatus.taken).length;
   int get _totalCount => _medications.length;
-  double get _adherence => _takenCount / _totalCount;
+  double get _adherence => _totalCount == 0 ? 0 : _takenCount / _totalCount;
 
   @override
   void initState() {
@@ -113,7 +112,6 @@ class _MedicationListScreenState extends State<MedicationListScreen>
 
   void _toggleStatus(int index) {
     setState(() {
-      // Cycle: pending → taken → missed → pending
       final m = _medications[index];
       if (m.status == _MedStatus.pending) {
         m.status = _MedStatus.taken;
@@ -127,152 +125,140 @@ class _MedicationListScreenState extends State<MedicationListScreen>
 
   @override
   Widget build(BuildContext context) {
-    return PremiumBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: const Text('Medications'),
-          actions: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.history_rounded),
-            ),
-          ],
-        ),
-        floatingActionButton: _AddMedFab(),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-          children: [
-            // ── Adherence ring banner ─────────────────────────────────────
-            AnimatedBuilder(
-              animation: _ringCtrl,
-              builder: (_, _) {
-                final t = CurvedAnimation(
-                  parent: _ringCtrl,
-                  curve: Curves.easeOutCubic,
-                ).value;
-                return GlassPanel(
-                  padding: const EdgeInsets.all(20),
-                  radius: 28,
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.emerald.withValues(alpha: .13),
-                      AppColors.cyan.withValues(alpha: .04),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 88,
-                        height: 88,
-                        child: CustomPaint(
-                          painter: _AdherenceRingPainter(_adherence * t),
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${(_adherence * t * 100).round()}%',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('Medications'),
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.history_rounded),
+          ),
+        ],
+      ),
+      floatingActionButton: _AddMedFab(),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+        children: [
+          // ── Adherence ring banner ─────────────────────────────────────
+          AnimatedBuilder(
+            animation: _ringCtrl,
+            builder: (_, _) {
+              final t = CurvedAnimation(
+                parent: _ringCtrl,
+                curve: Curves.easeOutCubic,
+              ).value;
+              return AppCard(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 88,
+                      height: 88,
+                      child: CustomPaint(
+                        painter: _AdherenceRingPainter(
+                          progress: _adherence * t,
+                          trackColor: theme.dividerColor,
+                          progressColor: colorScheme.primary,
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${(_adherence * t * 100).round()}%',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: colorScheme.onSurface,
                                 ),
-                                const Text(
-                                  'today',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: AppColors.textSecondary,
-                                  ),
+                              ),
+                              Text(
+                                'today',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Adherence Today',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Adherence Today',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: colorScheme.onSurface,
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              '$_takenCount of $_totalCount doses taken',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                              ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '$_takenCount of $_totalCount doses taken',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                _StatusDot(AppColors.emerald, 'Taken'),
-                                const SizedBox(width: 10),
-                                _StatusDot(AppColors.warning, 'Pending'),
-                                const SizedBox(width: 10),
-                                _StatusDot(AppColors.error, 'Missed'),
-                              ],
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              _StatusDot(colorScheme.primary, 'Taken'),
+                              const _StatusDot(Colors.orange, 'Pending'),
+                              const _StatusDot(Colors.red, 'Missed'),
+                            ],
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 24),
+          const SectionHeader(title: "Today's Schedule"),
+          const SizedBox(height: 16),
+
+          // ── Medication cards ──────────────────────────────────────────
+          ...List.generate(_medications.length, (i) {
+            return AnimatedBuilder(
+              animation: _cardCtls[i],
+              builder: (_, child) {
+                final t = CurvedAnimation(
+                  parent: _cardCtls[i],
+                  curve: Curves.easeOutBack,
+                ).value.clamp(0.0, 1.0);
+                return Opacity(
+                  opacity: t,
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - t) * 20),
+                    child: child,
                   ),
                 );
               },
-            ),
-
-            const SizedBox(height: 24),
-            const Text(
-              "Today's Schedule",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // ── Medication cards ──────────────────────────────────────────
-            ...List.generate(_medications.length, (i) {
-              return AnimatedBuilder(
-                animation: _cardCtls[i],
-                builder: (_, child) {
-                  final t = CurvedAnimation(
-                    parent: _cardCtls[i],
-                    curve: Curves.easeOutBack,
-                  ).value.clamp(0.0, 1.0);
-                  return Opacity(
-                    opacity: t,
-                    child: Transform.translate(
-                      offset: Offset(0, (1 - t) * 20),
-                      child: child,
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _MedCard(
-                    med: _medications[i],
-                    onToggle: () => _toggleStatus(i),
-                  ),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _MedCard(
+                  med: _medications[i],
+                  onToggle: () => _toggleStatus(i),
                 ),
-              );
-            }),
-          ],
-        ),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -292,11 +278,11 @@ class _MedCard extends StatefulWidget {
 class _MedCardState extends State<_MedCard> {
   bool _pressed = false;
 
-  Color get _statusColor {
+  Color _getStatusColor(ColorScheme scheme) {
     return switch (widget.med.status) {
-      _MedStatus.taken => AppColors.emerald,
-      _MedStatus.pending => AppColors.warning,
-      _MedStatus.missed => AppColors.error,
+      _MedStatus.taken => scheme.primary,
+      _MedStatus.pending => Colors.orange,
+      _MedStatus.missed => Colors.red,
     };
   }
 
@@ -318,6 +304,10 @@ class _MedCardState extends State<_MedCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final statusColor = _getStatusColor(colorScheme);
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -328,17 +318,8 @@ class _MedCardState extends State<_MedCard> {
       child: AnimatedScale(
         duration: const Duration(milliseconds: 140),
         scale: _pressed ? 0.97 : 1.0,
-        child: GlassPanel(
+        child: AppCard(
           padding: const EdgeInsets.all(16),
-          radius: 22,
-          gradient: LinearGradient(
-            colors: [
-              _statusColor.withValues(alpha: .08),
-              _statusColor.withValues(alpha: .02),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
           child: Row(
             children: [
               // Icon
@@ -346,10 +327,10 @@ class _MedCardState extends State<_MedCard> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: widget.med.color.withValues(alpha: .15),
+                  color: widget.med.color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: widget.med.color.withValues(alpha: .35),
+                    color: widget.med.color.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Icon(widget.med.icon, color: widget.med.color, size: 22),
@@ -362,20 +343,24 @@ class _MedCardState extends State<_MedCard> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          widget.med.name,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                        Flexible(
+                          child: Text(
+                            widget.med.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: colorScheme.onSurface,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 6),
                         Text(
                           widget.med.dose,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -383,16 +368,16 @@ class _MedCardState extends State<_MedCard> {
                     const SizedBox(height: 3),
                     Text(
                       widget.med.time,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       widget.med.note,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: widget.med.color,
                         fontWeight: FontWeight.w600,
                       ),
@@ -410,13 +395,13 @@ class _MedCardState extends State<_MedCard> {
                 child: Column(
                   key: ValueKey(widget.med.status),
                   children: [
-                    Icon(_statusIcon, color: _statusColor, size: 26),
-                    const SizedBox(height: 3),
+                    Icon(_statusIcon, color: statusColor, size: 28),
+                    const SizedBox(height: 4),
                     Text(
                       _statusLabel,
                       style: TextStyle(
-                        fontSize: 9,
-                        color: _statusColor,
+                        fontSize: 10,
+                        color: statusColor,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -443,6 +428,8 @@ class _AddMedFabState extends State<_AddMedFab> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) => setState(() => _pressed = false),
@@ -454,27 +441,25 @@ class _AddMedFabState extends State<_AddMedFab> {
           height: 52,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.emerald, Color(0xFF238F87)],
-            ),
+            color: colorScheme.primary,
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: AppColors.emerald.withValues(alpha: .35),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
+                color: colorScheme.primary.withValues(alpha: 0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_rounded, color: AppColors.background, size: 20),
-              SizedBox(width: 8),
+              Icon(Icons.add_rounded, color: colorScheme.onPrimary, size: 20),
+              const SizedBox(width: 8),
               Text(
                 'Add Medication',
                 style: TextStyle(
-                  color: AppColors.background,
+                  color: colorScheme.onPrimary,
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
                 ),
@@ -496,21 +481,27 @@ class _StatusDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 7,
-          height: 7,
+          width: 8,
+          height: 8,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         Text(
           label,
-          style: TextStyle(fontSize: 10, color: color),
+          style: TextStyle(
+            fontSize: 11, 
+            color: colorScheme.onSurface.withValues(alpha: 0.8),
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -518,8 +509,14 @@ class _StatusDot extends StatelessWidget {
 }
 
 class _AdherenceRingPainter extends CustomPainter {
-  const _AdherenceRingPainter(this.progress);
+  const _AdherenceRingPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.progressColor,
+  });
   final double progress;
+  final Color trackColor;
+  final Color progressColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -533,7 +530,7 @@ class _AdherenceRingPainter extends CustomPainter {
       math.pi * 2,
       false,
       Paint()
-        ..color = AppColors.divider
+        ..color = trackColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = 8
         ..strokeCap = StrokeCap.round,
@@ -546,7 +543,7 @@ class _AdherenceRingPainter extends CustomPainter {
         math.pi * 2 * progress,
         false,
         Paint()
-          ..color = AppColors.emerald
+          ..color = progressColor
           ..style = PaintingStyle.stroke
           ..strokeWidth = 8
           ..strokeCap = StrokeCap.round,

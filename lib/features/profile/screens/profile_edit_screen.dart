@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zindagi_plus/core/theme/app_theme.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
-import 'package:zindagi_plus/shared/widgets/premium_ui.dart';
-
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 // ── Condition data ─────────────────────────────────────────────────────────────
 
 const _allConditions = [
@@ -39,6 +39,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
   String _bloodType = 'B+';
   final Set<String> _conditions = {'Type 2 Diabetes', 'Vitamin D Deficiency'};
   bool _isSaving = false;
+  File? _profileImage;
   late final AnimationController _entranceCtrl;
 
   @override
@@ -65,6 +66,16 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _profileImage = File(pickedFile.path);
+      });
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
@@ -77,275 +88,284 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
 
   @override
   Widget build(BuildContext context) {
-    return PremiumBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('Edit Profile'),
-          leading: GestureDetector(
-            onTap: () => context.pop(),
-            child: const Icon(Icons.close_rounded, size: 24),
-          ),
-          actions: [
-            // Save — Apple §1: respond immediately
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: _SaveButton(
-                loading: _isSaving,
-                onPressed: _save,
-              ),
-            ),
-          ],
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+        leading: GestureDetector(
+          onTap: () => context.pop(),
+          child: const Icon(Icons.close_rounded, size: 24),
         ),
-        body: AnimatedBuilder(
-          animation: _entranceCtrl,
-          builder: (_, child) {
-            final t = CurvedAnimation(
-              parent: _entranceCtrl,
-              curve: Curves.easeOutCubic,
-            ).value;
-            return Opacity(opacity: t, child: child);
-          },
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-              children: [
-                // ── Avatar header ─────────────────────────────────────────
-                Center(
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 88,
-                        height: 88,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.emerald, Color(0xFF238F87)],
+        actions: [
+          // Save — Apple §1: respond immediately
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: _SaveButton(
+              loading: _isSaving,
+              onPressed: _save,
+            ),
+          ),
+        ],
+      ),
+      body: AnimatedBuilder(
+        animation: _entranceCtrl,
+        builder: (_, child) {
+          final t = CurvedAnimation(
+            parent: _entranceCtrl,
+            curve: Curves.easeOutCubic,
+          ).value;
+          return Opacity(opacity: t, child: child);
+        },
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+            children: [
+              // ── Avatar header ─────────────────────────────────────────
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 88,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        shape: BoxShape.circle,
+                        image: _profileImage != null
+                            ? DecorationImage(
+                                image: FileImage(_profileImage!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorScheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
                           ),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.emerald.withValues(alpha: .3),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
+                        ],
+                      ),
+                      child: _profileImage == null
+                          ? Center(
+                              child: Text(
+                                _nameCtrl.text.isNotEmpty
+                                    ? _nameCtrl.text[0].toUpperCase()
+                                    : 'U',
+                                style: TextStyle(
+                                  fontSize: 36,
+                                  color: colorScheme.onPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: 10),
+                    _TapScale(
+                      onTap: _pickImage,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: theme.dividerColor),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.camera_alt_outlined,
+                              size: 14,
+                              color: colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Change Photo',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
                             ),
                           ],
                         ),
-                        child: Center(
-                          child: Text(
-                            _nameCtrl.text.isNotEmpty
-                                ? _nameCtrl.text[0].toUpperCase()
-                                : 'U',
-                            style: const TextStyle(
-                              fontSize: 36,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // ── Section: Personal ─────────────────────────────────────
+              const SectionHeader(title: 'Personal Information'),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
+                ),
+                onChanged: (_) => setState(() {}),
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _ageCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Age',
+                        prefixIcon: Icon(Icons.cake_outlined),
+                        suffixText: 'yrs',
+                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _weightCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Weight',
+                        prefixIcon: Icon(Icons.monitor_weight_outlined),
+                        suffixText: 'kg',
+                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _heightCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Height',
+                        prefixIcon: Icon(Icons.height_rounded),
+                        suffixText: 'cm',
+                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Blood type picker
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: theme.dividerColor),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _bloodType,
+                          isExpanded: true,
+                          dropdownColor: colorScheme.surface,
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontSize: 14,
+                          ),
+                          icon: Icon(
+                            Icons.arrow_drop_down,
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                          hint: Text(
+                            'Blood Type',
+                            style: TextStyle(
+                              color: colorScheme.onSurface.withValues(alpha: 0.6),
+                              fontSize: 13,
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _TapScale(
-                        onTap: () {},
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.divider),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.camera_alt_outlined,
-                                size: 14,
-                                color: AppColors.textSecondary,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'Change Photo',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
+                          items: _bloodTypes
+                              .map(
+                                (t) => DropdownMenuItem(
+                                  value: t,
+                                  child: Text(t),
                                 ),
-                              ),
-                            ],
-                          ),
+                              )
+                              .toList(),
+                          onChanged: (v) =>
+                              setState(() => _bloodType = v ?? _bloodType),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                // ── Section: Personal ─────────────────────────────────────
-                _SectionLabel('Personal Information'),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    prefixIcon: Icon(Icons.person_outline_rounded),
-                  ),
-                  onChanged: (_) => setState(() {}),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _ageCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Age',
-                          prefixIcon: Icon(Icons.cake_outlined),
-                          suffixText: 'yrs',
-                        ),
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _weightCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Weight',
-                          prefixIcon: Icon(Icons.monitor_weight_outlined),
-                          suffixText: 'kg',
-                        ),
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _heightCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Height',
-                          prefixIcon: Icon(Icons.height_rounded),
-                          suffixText: 'cm',
-                        ),
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Blood type picker
-                    Expanded(
-                      child: GlassPanel(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        radius: 22,
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _bloodType,
-                            isExpanded: true,
-                            dropdownColor: AppColors.surface,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                            ),
-                            icon: const Icon(
-                              Icons.arrow_drop_down,
-                              color: AppColors.textSecondary,
-                            ),
-                            hint: const Text(
-                              'Blood Type',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 13,
-                              ),
-                            ),
-                            items: _bloodTypes
-                                .map(
-                                  (t) => DropdownMenuItem(
-                                    value: t,
-                                    child: Text(t),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) =>
-                                setState(() => _bloodType = v ?? _bloodType),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 28),
-
-                // ── Section: Conditions ───────────────────────────────────
-                _SectionLabel('Active Conditions'),
-                const SizedBox(height: 4),
-                Text(
-                  'Select all that apply — this personalises your AI recommendations.',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _allConditions
-                      .map(
-                        (c) => _ConditionChip(
-                          label: c,
-                          selected: _conditions.contains(c),
-                          onToggle: () {
-                            setState(() {
-                              if (_conditions.contains(c)) {
-                                _conditions.remove(c);
-                              } else {
-                                _conditions.add(c);
-                              }
-                            });
-                          },
-                        ),
-                      )
-                      .toList(),
-                ),
-
-                const SizedBox(height: 36),
-
-                // ── Save button ────────────────────────────────────────────
-                PremiumButton(
-                  label: 'Save Changes',
-                  onPressed: _isSaving ? null : _save,
-                  loading: _isSaving,
-                  icon: Icons.check_rounded,
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => context.pop(),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
                     ),
                   ),
+                ],
+              ),
+
+              const SizedBox(height: 28),
+
+              // ── Section: Conditions ───────────────────────────────────
+              const SectionHeader(title: 'Active Conditions'),
+              const SizedBox(height: 4),
+              Text(
+                'Select all that apply — this personalises your AI recommendations.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _allConditions
+                    .map(
+                      (c) => _ConditionChip(
+                        label: c,
+                        selected: _conditions.contains(c),
+                        onToggle: () {
+                          setState(() {
+                            if (_conditions.contains(c)) {
+                              _conditions.remove(c);
+                            } else {
+                              _conditions.add(c);
+                            }
+                          });
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+
+              const SizedBox(height: 36),
+
+              // ── Save button ────────────────────────────────────────────
+              PrimaryButton(
+                text: 'Save Changes',
+                onPressed: _isSaving ? () {} : _save,
+                icon: Icons.check_rounded,
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => context.pop(),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -374,6 +394,9 @@ class _ConditionChipState extends State<_ConditionChip> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -390,13 +413,13 @@ class _ConditionChipState extends State<_ConditionChip> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: widget.selected
-                ? AppColors.emerald.withValues(alpha: .16)
-                : AppColors.surface,
+                ? colorScheme.primary.withValues(alpha: 0.16)
+                : colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: widget.selected
-                  ? AppColors.emerald.withValues(alpha: .55)
-                  : AppColors.divider,
+                  ? colorScheme.primary.withValues(alpha: 0.55)
+                  : theme.dividerColor,
               width: widget.selected ? 1.5 : 1.0,
             ),
           ),
@@ -412,8 +435,8 @@ class _ConditionChipState extends State<_ConditionChip> {
                   key: ValueKey(widget.selected),
                   size: 14,
                   color: widget.selected
-                      ? AppColors.emerald
-                      : AppColors.textTertiary,
+                      ? colorScheme.primary
+                      : colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
               ),
               const SizedBox(width: 6),
@@ -423,8 +446,8 @@ class _ConditionChipState extends State<_ConditionChip> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: widget.selected
-                      ? AppColors.mint
-                      : AppColors.textSecondary,
+                      ? colorScheme.primary
+                      : colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -451,6 +474,8 @@ class _SaveButtonState extends State<_SaveButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -464,9 +489,7 @@ class _SaveButtonState extends State<_SaveButton> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.emerald, Color(0xFF238F87)],
-            ),
+            color: colorScheme.primary,
             borderRadius: BorderRadius.circular(14),
           ),
           child: widget.loading
@@ -478,10 +501,10 @@ class _SaveButtonState extends State<_SaveButton> {
                     color: Colors.white,
                   ),
                 )
-              : const Text(
+              : Text(
                   'Save',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: colorScheme.onPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
@@ -493,24 +516,6 @@ class _SaveButtonState extends State<_SaveButton> {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label);
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        color: AppColors.textTertiary,
-        letterSpacing: 1.1,
-      ),
-    );
-  }
-}
 
 class _TapScale extends StatefulWidget {
   const _TapScale({required this.child, required this.onTap});

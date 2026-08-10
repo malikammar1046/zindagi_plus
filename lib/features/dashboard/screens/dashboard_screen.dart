@@ -2,10 +2,16 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zindagi_plus/core/theme/app_theme.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
 import 'package:zindagi_plus/providers/health_providers.dart';
-import 'package:zindagi_plus/shared/widgets/premium_ui.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
+
+String _greeting() {
+  final hour = DateTime.now().hour;
+  if (hour < 12) return 'Good morning,';
+  if (hour < 17) return 'Good afternoon,';
+  return 'Good evening,';
+}
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -14,24 +20,19 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider);
     final dashboard = ref.watch(dashboardDataProvider);
-    return PremiumBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: dashboard.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.mint),
-            ),
-            error: (e, _) => Center(
-              child: Text(
-                e.toString(),
-                style: const TextStyle(color: AppColors.error),
-              ),
-            ),
-            data: (data) => _Content(
-              name: user?.name ?? 'there',
-              data: data,
-            ),
+    
+    return Scaffold(
+      body: SafeArea(
+        child: dashboard.when(
+          loading: () => const Center(
+            child: CircularProgressIndicator(),
+          ),
+          error: (e, st) => ErrorStateWidget(
+            message: e.toString(),
+          ),
+          data: (data) => _Content(
+            name: user?.name ?? 'there',
+            data: data,
           ),
         ),
       ),
@@ -46,9 +47,12 @@ class _Content extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final insights = data['recentInsights'] as List<dynamic>;
+    
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 116),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
       children: [
         // ── Greeting row ─────────────────────────────────────────────────
         Row(
@@ -58,41 +62,41 @@ class _Content extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Good morning,',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                    _greeting(),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     name,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1,
-                        ),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1,
+                    ),
                   ),
                 ],
               ),
             ),
-            GlassPanel(
-              radius: 18,
+            AppCard(
               padding: const EdgeInsets.all(12),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.notifications_none_rounded,
-                    color: AppColors.textPrimary,
+                    color: colorScheme.onSurface,
                   ),
                   Positioned(
-                    right: -1,
-                    top: -1,
+                    right: 2,
+                    top: 2,
                     child: Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: AppColors.cyan,
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondary, // Burgundy indicator
                         shape: BoxShape.circle,
+                        border: Border.all(color: colorScheme.surface, width: 1.5),
                       ),
                     ),
                   ),
@@ -101,18 +105,14 @@ class _Content extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 32),
 
-        Text(
-          'Your health, at a glance',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+        SectionHeader(
+          title: 'Your health, at a glance',
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
 
         // ── Score panel — tappable → /score-breakdown ─────────────────────
-        // Apple §1: GestureDetector.onTapDown for instant response
         _TapScorePanel(
           score: data['healthScore'] as int,
           activeMeds: data['activeMeds'] as int,
@@ -121,7 +121,7 @@ class _Content extends StatelessWidget {
           onTap: () => context.push('/score-breakdown'),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
 
         // ── Quick actions row ─────────────────────────────────────────────
         Row(
@@ -130,63 +130,61 @@ class _Content extends StatelessWidget {
               child: _QuickAction(
                 icon: Icons.directions_run_rounded,
                 label: 'Activities',
-                color: AppColors.cyan,
                 onTap: () => context.push('/activities'),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: _QuickAction(
                 icon: Icons.medication_outlined,
                 label: 'Medications',
-                color: AppColors.blue,
                 onTap: () => context.push('/medications'),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: _QuickAction(
                 icon: Icons.history_rounded,
                 label: 'Timeline',
-                color: AppColors.mint,
                 onTap: () => context.push('/timeline'),
               ),
             ),
           ],
         ),
 
-        const SizedBox(height: 28),
+        const SizedBox(height: 32),
 
         // ── AI insights ───────────────────────────────────────────────────
         Row(
           children: [
-            Text(
-              'Zindagi intelligence',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            const SizedBox(width: 8),
-            const _LivePill(),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        ...insights.asMap().entries.map(
-              (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _Insight(
-                  text: entry.value as String,
-                  recId: '${entry.key + 1}',
+            Flexible(
+              child: Text(
+                'Zindagi intelligence',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+            const SizedBox(width: 12),
+            const StatusBadge(text: 'LIVE', status: BadgeStatus.normal),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        ...insights.asMap().entries.map(
+          (entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _Insight(
+              text: entry.value as String,
+              recId: '${entry.key + 1}',
+            ),
+          ),
+        ),
       ],
     );
   }
 }
-
-// ── Tappable score panel (Apple §1: respond on pointer-down) ──────────────────
 
 class _TapScorePanel extends StatefulWidget {
   const _TapScorePanel({
@@ -210,6 +208,9 @@ class _TapScorePanelState extends State<_TapScorePanel> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -220,14 +221,19 @@ class _TapScorePanelState extends State<_TapScorePanel> {
       child: AnimatedScale(
         duration: const Duration(milliseconds: 150),
         scale: _pressed ? 0.98 : 1.0,
-        child: GlassPanel(
-          padding: const EdgeInsets.all(22),
-          radius: 32,
-          gradient: const LinearGradient(
-            colors: [Color(0xFF174D46), Color(0xFF162A31)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+        child: Container(
+          decoration: BoxDecoration(
+            color: colorScheme.primary, // Solid Emerald background
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withValues(alpha: 0.2),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -238,29 +244,30 @@ class _TapScorePanelState extends State<_TapScorePanel> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'HEALTH PULSE',
                           style: TextStyle(
-                            color: AppColors.mint,
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1.3,
                           ),
                         ),
-                        const SizedBox(height: 9),
+                        const SizedBox(height: 8),
                         const Text(
                           'A calm day to build on.',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
+                            color: Colors.white,
                             height: 1.2,
                           ),
                         ),
-                        const SizedBox(height: 7),
+                        const SizedBox(height: 8),
                         Text(
                           'Tap to see score breakdown  →',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: .62),
+                            color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 12,
                           ),
                         ),
@@ -270,8 +277,8 @@ class _TapScorePanelState extends State<_TapScorePanel> {
                   _ScoreRing(score: widget.score),
                 ],
               ),
-              const SizedBox(height: 22),
-              Container(height: 1, color: Colors.white.withValues(alpha: .12)),
+              const SizedBox(height: 24),
+              Container(height: 1, color: Colors.white.withValues(alpha: 0.2)),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -293,28 +300,31 @@ class _Stat extends StatelessWidget {
   final String value, label;
 
   @override
-  Widget build(BuildContext context) => Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 14,
-              ),
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              color: Colors.white,
             ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 10,
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 10,
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ScoreRing extends StatefulWidget {
@@ -343,8 +353,8 @@ class _ScoreRingState extends State<_ScoreRing>
     return AnimatedBuilder(
       animation: c,
       builder: (_, _) => SizedBox(
-        width: 104,
-        height: 104,
+        width: 90,
+        height: 90,
         child: CustomPaint(
           painter: _Ring(widget.score / 100 * c.value),
           child: Center(
@@ -354,15 +364,16 @@ class _ScoreRingState extends State<_ScoreRing>
                 Text(
                   '${(widget.score * c.value).round()}',
                   style: const TextStyle(
-                    fontSize: 27,
+                    fontSize: 24,
                     fontWeight: FontWeight.w800,
+                    color: Colors.white,
                   ),
                 ),
-                const Text(
+                Text(
                   'score',
                   style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textSecondary,
+                    color: Colors.white.withValues(alpha: 0.8),
                   ),
                 ),
               ],
@@ -385,11 +396,9 @@ class _Ring extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
       ..strokeCap = StrokeCap.round;
-    p.color = Colors.white.withValues(alpha: .12);
+    p.color = Colors.white.withValues(alpha: 0.2);
     c.drawArc(rect, -math.pi / 2, math.pi * 2, false, p);
-    p.shader = const SweepGradient(
-      colors: [AppColors.cyan, AppColors.mint, AppColors.emerald],
-    ).createShader(rect);
+    p.color = Colors.white; // Solid white progress on top of emerald card
     c.drawArc(rect, -math.pi / 2, math.pi * 2 * progress, false, p);
   }
 
@@ -397,66 +406,14 @@ class _Ring extends CustomPainter {
   bool shouldRepaint(_Ring o) => o.progress != progress;
 }
 
-class _LivePill extends StatefulWidget {
-  const _LivePill();
-
-  @override
-  State<_LivePill> createState() => _LivePillState();
-}
-
-class _LivePillState extends State<_LivePill>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1200),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-        animation: c,
-        builder: (_, _) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.emerald.withValues(alpha: .1 + c.value * .06),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.auto_awesome_rounded, size: 12, color: AppColors.mint),
-              SizedBox(width: 4),
-              Text(
-                'LIVE',
-                style: TextStyle(
-                  color: AppColors.mint,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-}
-
-// ── Quick action tile ──────────────────────────────────────────────────────────
-
 class _QuickAction extends StatefulWidget {
   const _QuickAction({
     required this.icon,
     required this.label,
-    required this.color,
     required this.onTap,
   });
   final IconData icon;
   final String label;
-  final Color color;
   final VoidCallback onTap;
 
   @override
@@ -468,6 +425,8 @@ class _QuickActionState extends State<_QuickAction> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -478,30 +437,29 @@ class _QuickActionState extends State<_QuickAction> {
       child: AnimatedScale(
         duration: const Duration(milliseconds: 130),
         scale: _pressed ? 0.95 : 1.0,
-        child: GlassPanel(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          radius: 20,
+        child: AppCard(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
           child: Column(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: widget.color.withValues(alpha: .15),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: widget.color.withValues(alpha: .35)),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(widget.icon, color: widget.color, size: 18),
+                child: Icon(widget.icon, color: theme.colorScheme.primary, size: 22),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
                 widget.label,
                 style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -510,8 +468,6 @@ class _QuickActionState extends State<_QuickAction> {
     );
   }
 }
-
-// ── Insight card ───────────────────────────────────────────────────────────────
 
 class _Insight extends StatefulWidget {
   const _Insight({required this.text, required this.recId});
@@ -527,6 +483,9 @@ class _InsightState extends State<_Insight> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -537,39 +496,38 @@ class _InsightState extends State<_Insight> {
       child: AnimatedScale(
         duration: const Duration(milliseconds: 130),
         scale: _pressed ? 0.98 : 1.0,
-        child: GlassPanel(
+        child: AppCard(
           padding: const EdgeInsets.all(16),
-          radius: 24,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(9),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.blue.withValues(alpha: .14),
+                  color: colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.auto_awesome_rounded,
-                  color: AppColors.cyan,
-                  size: 17,
+                  color: colorScheme.primary,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   widget.text,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
+                  style: TextStyle(
+                    color: colorScheme.onSurface.withValues(alpha: 0.8),
+                    fontSize: 14,
                     height: 1.5,
                   ),
                 ),
               ),
               Icon(
-                Icons.arrow_outward_rounded,
-                color: Colors.white.withValues(alpha: .45),
-                size: 17,
+                Icons.arrow_forward_ios_rounded,
+                color: colorScheme.onSurface.withValues(alpha: 0.3),
+                size: 16,
               ),
             ],
           ),

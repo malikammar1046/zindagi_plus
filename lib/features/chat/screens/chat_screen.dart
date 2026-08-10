@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zindagi_plus/core/theme/app_theme.dart';
-import 'package:zindagi_plus/shared/widgets/premium_ui.dart';
-
 // ── Mock data ──────────────────────────────────────────────────────────────────
 
 final _mockMessages = [
@@ -143,127 +140,128 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   @override
   Widget build(BuildContext context) {
-    return PremiumBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.emerald, AppColors.cyan],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: AppColors.background,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Zindagi AI',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    'Health Assistant',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            // Context badge — Apple §2: make state visible
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppColors.emerald.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.emerald.withValues(alpha: .3),
-                ),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.person_outline_rounded,
-                      color: AppColors.mint, size: 13),
-                  SizedBox(width: 4),
-                  Text(
-                    'Profile linked',
-                    style: TextStyle(
-                      color: AppColors.mint,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        body: Column(
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: Row(
           children: [
-            // ── Quick chips ──────────────────────────────────────────────────
-            SizedBox(
-              height: 44,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _quickChips.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => _ChipButton(
-                  label: _quickChips[i],
-                  onTap: () => _sendMessage(_quickChips[i]),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Zindagi AI',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
-              ),
-            ),
-
-            // ── Message list ─────────────────────────────────────────────────
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollCtrl,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                itemCount: _messages.length + (_isTyping ? 1 : 0),
-                itemBuilder: (_, i) {
-                  if (_isTyping && i == _messages.length) {
-                    return _TypingIndicator(dotCtrl: _dotCtrl);
-                  }
-                  return _MessageBubble(
-                    msg: _messages[i],
-                    isNew: i == _messages.length - 1,
-                  );
-                },
-              ),
-            ),
-
-            // ── Input bar ────────────────────────────────────────────────────
-            _InputBar(
-              controller: _textCtrl,
-              onSend: _sendMessage,
+                Text(
+                  'Health Assistant',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.person_outline_rounded,
+                  color: colorScheme.primary,
+                  size: 13,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Profile linked',
+                  style: TextStyle(
+                    color: colorScheme.primary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      resizeToAvoidBottomInset: true,
+      body: Column(
+        children: [
+          // ── Quick chips ──────────────────────────────────────────────────
+          SizedBox(
+            height: 44,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              itemCount: _quickChips.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (_, i) => _ChipButton(
+                label: _quickChips[i],
+                onTap: () => _sendMessage(_quickChips[i]),
+              ),
+            ),
+          ),
+          
+          const Divider(height: 1),
+
+          // ── Message list ─────────────────────────────────────────────────
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollCtrl,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              itemCount: _messages.length + (_isTyping ? 1 : 0),
+              itemBuilder: (_, i) {
+                if (_isTyping && i == _messages.length) {
+                  return _TypingIndicator(dotCtrl: _dotCtrl);
+                }
+                return _MessageBubble(
+                  msg: _messages[i],
+                  isNew: i == _messages.length - 1,
+                );
+              },
+            ),
+          ),
+
+          // ── Input bar ────────────────────────────────────────────────────
+          _InputBar(
+            controller: _textCtrl,
+            onSend: _sendMessage,
+          ),
+        ],
       ),
     );
   }
@@ -285,6 +283,8 @@ class _ChipButtonState extends State<_ChipButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -298,16 +298,16 @@ class _ChipButtonState extends State<_ChipButton> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: .8),
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.divider),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Text(
             widget.label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSurface.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -354,6 +354,8 @@ class _MessageBubbleState extends State<_MessageBubble>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (_, child) {
@@ -382,16 +384,9 @@ class _MessageBubbleState extends State<_MessageBubble>
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                gradient: widget.msg.isUser
-                    ? const LinearGradient(
-                        colors: [AppColors.emerald, Color(0xFF238F87)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
                 color: widget.msg.isUser
-                    ? null
-                    : AppColors.surface.withValues(alpha: .82),
+                    ? colorScheme.primary
+                    : colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
@@ -400,20 +395,20 @@ class _MessageBubbleState extends State<_MessageBubble>
                 ),
                 border: widget.msg.isUser
                     ? null
-                    : Border.all(color: AppColors.divider),
+                    : Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Text(
                 widget.msg.text,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 15,
                   color: widget.msg.isUser
-                      ? AppColors.background
-                      : AppColors.textPrimary,
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurface,
                   height: 1.5,
                 ),
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             // Sources + time
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -427,14 +422,14 @@ class _MessageBubbleState extends State<_MessageBubble>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.blue.withValues(alpha: .12),
+                        color: Colors.blue.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         s,
                         style: const TextStyle(
-                          fontSize: 9,
-                          color: AppColors.blue,
+                          fontSize: 10,
+                          color: Colors.blue,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -443,9 +438,9 @@ class _MessageBubbleState extends State<_MessageBubble>
                 ],
                 Text(
                   widget.msg.time,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textTertiary,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
               ],
@@ -465,6 +460,8 @@ class _TypingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -473,14 +470,14 @@ class _TypingIndicator extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.surface.withValues(alpha: .82),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
                 bottomRight: Radius.circular(20),
                 bottomLeft: Radius.circular(4),
               ),
-              border: Border.all(color: AppColors.divider),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: AnimatedBuilder(
               animation: dotCtrl,
@@ -496,8 +493,7 @@ class _TypingIndicator extends StatelessWidget {
                     width: 7,
                     height: 7,
                     decoration: BoxDecoration(
-                      color: AppColors.textSecondary
-                          .withValues(alpha: 0.4 + v * 0.6),
+                      color: colorScheme.onSurface.withValues(alpha: 0.3 + v * 0.5),
                       shape: BoxShape.circle,
                     ),
                   );
@@ -511,9 +507,8 @@ class _TypingIndicator extends StatelessWidget {
   }
 
   double mathSin(double x) {
-    // Simple approximation of a sine wave for dot animation
     if (x <= 0 || x >= 1) return 0;
-    return 4 * x * (1 - x); // parabola ≈ sin for 0..1
+    return 4 * x * (1 - x);
   }
 }
 
@@ -530,6 +525,7 @@ class _InputBar extends StatefulWidget {
 
 class _InputBarState extends State<_InputBar> {
   bool _hasText = false;
+  bool _pressed = false;
 
   @override
   void initState() {
@@ -541,42 +537,45 @@ class _InputBarState extends State<_InputBar> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Container(
       padding: EdgeInsets.fromLTRB(
         16,
-        10,
+        12,
         16,
         MediaQuery.of(context).padding.bottom + 16,
       ),
       decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: .9),
-        border: Border(top: BorderSide(color: AppColors.divider)),
+        color: colorScheme.surface,
+        border: Border(top: BorderSide(color: theme.dividerColor)),
       ),
       child: Row(
         children: [
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colorScheme.surface,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.divider),
+                border: Border.all(color: theme.dividerColor),
               ),
               child: TextField(
                 controller: widget.controller,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
+                style: TextStyle(
+                  color: colorScheme.onSurface,
+                  fontSize: 15,
                 ),
                 maxLines: 4,
                 minLines: 1,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Ask about your health…',
                   hintStyle: TextStyle(
-                    color: AppColors.textTertiary,
-                    fontSize: 14,
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontSize: 15,
                   ),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
+                  contentPadding: const EdgeInsets.symmetric(
                     horizontal: 18,
                     vertical: 12,
                   ),
@@ -589,36 +588,31 @@ class _InputBarState extends State<_InputBar> {
           ),
           const SizedBox(width: 10),
           // Send button — Apple §1: respond on pointer-down
-          AnimatedScale(
-            duration: const Duration(milliseconds: 160),
-            scale: _hasText ? 1.0 : 0.88,
-            child: GestureDetector(
-              onTap: () => widget.onSend(widget.controller.text),
+          GestureDetector(
+            onTapDown: (_) => setState(() => _pressed = true),
+            onTapUp: (_) {
+              setState(() => _pressed = false);
+              widget.onSend(widget.controller.text);
+            },
+            onTapCancel: () => setState(() => _pressed = false),
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 160),
+              scale: _pressed ? 0.88 : 1.0,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                width: 44,
-                height: 44,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  gradient: _hasText
-                      ? const LinearGradient(
-                          colors: [AppColors.emerald, Color(0xFF238F87)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  color: _hasText ? null : AppColors.surface,
+                  color: _hasText ? colorScheme.primary : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(14),
-                  border: _hasText
-                      ? null
-                      : Border.all(color: AppColors.divider),
                 ),
                 child: Icon(
                   Icons.arrow_upward_rounded,
                   color: _hasText
-                      ? AppColors.background
-                      : AppColors.textTertiary,
-                  size: 20,
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurface.withValues(alpha: 0.4),
+                  size: 22,
                 ),
               ),
             ),
