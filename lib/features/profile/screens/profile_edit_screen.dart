@@ -1,24 +1,51 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zindagi_plus/providers/auth_provider.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:zindagi_plus/providers/auth_provider.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
-// ── Condition data ─────────────────────────────────────────────────────────────
+
+// ── Master lists ─────────────────────────────────────────────────────────────
 
 const _allConditions = [
   'Type 2 Diabetes',
+  'Pre-diabetes',
   'Hypertension',
   'Vitamin D Deficiency',
   'High Cholesterol',
-  'Anaemia',
+  'Fatty Liver',
   'Thyroid Disorder',
   'Asthma',
-  'Fatty Liver',
 ];
 
-const _bloodTypes = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−'];
+const _allAllergies = [
+  'Peanuts',
+  'Gluten / Celiac',
+  'Dairy / Lactose',
+  'Shellfish',
+  'Eggs',
+  'Penicillin',
+];
+
+const _bloodTypes = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−', 'Unknown'];
+
+const _goalsList = [
+  'Improve blood sugar & metabolic health',
+  'Lose weight sustainably',
+  'Gain lean muscle & strength',
+  'Improve cardiovascular fitness',
+  'Build healthier daily habits',
+];
+
+const _dietStyles = [
+  'No specific diet',
+  'High Protein / Low Carb',
+  'Vegetarian',
+  'Vegan',
+  'Halal',
+  'Low Glycemic Index'
+];
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
@@ -36,8 +63,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
   late final TextEditingController _ageCtrl;
   late final TextEditingController _weightCtrl;
   late final TextEditingController _heightCtrl;
+  late final TextEditingController _cityCtrl;
   String _bloodType = 'B+';
-  final Set<String> _conditions = {'Type 2 Diabetes', 'Vitamin D Deficiency'};
+  String _primaryGoal = 'Improve blood sugar & metabolic health';
+  String _dietType = 'High Protein / Low Carb';
+  final Set<String> _conditions = {};
+  final Set<String> _allergies = {};
   bool _isSaving = false;
   File? _profileImage;
   late final AnimationController _entranceCtrl;
@@ -47,9 +78,23 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
     super.initState();
     final user = ref.read(authNotifierProvider);
     _nameCtrl = TextEditingController(text: user?.name ?? '');
-    _ageCtrl = TextEditingController(text: '24');
-    _weightCtrl = TextEditingController(text: '72');
-    _heightCtrl = TextEditingController(text: '175');
+    _ageCtrl = TextEditingController(text: user?.age?.toString() ?? '24');
+    _weightCtrl = TextEditingController(
+        text: user?.weightKg != null ? user!.weightKg!.toStringAsFixed(0) : '72');
+    _heightCtrl = TextEditingController(
+        text: user?.heightCm != null ? user!.heightCm!.toStringAsFixed(0) : '175');
+    _cityCtrl = TextEditingController(text: user?.city ?? 'Lahore');
+    _bloodType = user?.bloodType ?? 'B+';
+    _primaryGoal = user?.primaryGoal ?? _goalsList.first;
+    _dietType = user?.dietType ?? _dietStyles.first;
+
+    if (user?.conditions.isNotEmpty == true) {
+      _conditions.addAll(user!.conditions);
+    }
+    if (user?.allergies.isNotEmpty == true) {
+      _allergies.addAll(user!.allergies);
+    }
+
     _entranceCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 450),
@@ -62,6 +107,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
     _ageCtrl.dispose();
     _weightCtrl.dispose();
     _heightCtrl.dispose();
+    _cityCtrl.dispose();
     _entranceCtrl.dispose();
     super.dispose();
   }
@@ -79,10 +125,25 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 300));
+    final currentUser = ref.read(authNotifierProvider);
+    if (currentUser != null) {
+      final updatedUser = currentUser.copyWith(
+        name: _nameCtrl.text.trim(),
+        age: int.tryParse(_ageCtrl.text.trim()),
+        weightKg: double.tryParse(_weightCtrl.text.trim()),
+        heightCm: double.tryParse(_heightCtrl.text.trim()),
+        bloodType: _bloodType,
+        city: _cityCtrl.text.trim(),
+        primaryGoal: _primaryGoal,
+        dietType: _dietType,
+        conditions: _conditions.toList(),
+        allergies: _allergies.toList(),
+      );
+      ref.read(authNotifierProvider.notifier).updateProfile(updatedUser);
+    }
     if (!mounted) return;
     setState(() => _isSaving = false);
-    // Apple §7: go back along the same path we came from
     context.pop();
   }
 
@@ -90,7 +151,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
@@ -99,7 +160,6 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
           child: const Icon(Icons.close_rounded, size: 24),
         ),
         actions: [
-          // Save — Apple §1: respond immediately
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: _SaveButton(
@@ -232,15 +292,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
-                      controller: _weightCtrl,
-                      keyboardType: TextInputType.number,
+                      controller: _cityCtrl,
                       decoration: const InputDecoration(
-                        labelText: 'Weight',
-                        prefixIcon: Icon(Icons.monitor_weight_outlined),
-                        suffixText: 'kg',
+                        labelText: 'City',
+                        prefixIcon: Icon(Icons.location_city_rounded),
                       ),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
                     ),
                   ),
                 ],
@@ -262,53 +318,80 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Blood type picker
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
+                    child: TextFormField(
+                      controller: _weightCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Weight',
+                        prefixIcon: Icon(Icons.monitor_weight_outlined),
+                        suffixText: 'kg',
                       ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: theme.dividerColor),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _bloodType,
-                          isExpanded: true,
-                          dropdownColor: colorScheme.surface,
-                          style: TextStyle(
-                            color: colorScheme.onSurface,
-                            fontSize: 14,
-                          ),
-                          icon: Icon(
-                            Icons.arrow_drop_down,
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                          hint: Text(
-                            'Blood Type',
-                            style: TextStyle(
-                              color: colorScheme.onSurface.withValues(alpha: 0.6),
-                              fontSize: 13,
-                            ),
-                          ),
-                          items: _bloodTypes
-                              .map(
-                                (t) => DropdownMenuItem(
-                                  value: t,
-                                  child: Text(t),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) =>
-                              setState(() => _bloodType = v ?? _bloodType),
-                        ),
-                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 14),
+              // Blood type picker
+              DropdownButtonFormField<String>(
+                initialValue: _bloodType,
+                decoration: const InputDecoration(
+                  labelText: 'Blood Group',
+                  prefixIcon: Icon(Icons.bloodtype_outlined),
+                ),
+                items: _bloodTypes
+                    .map(
+                      (t) => DropdownMenuItem(
+                        value: t,
+                        child: Text(t),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _bloodType = v ?? _bloodType),
+              ),
+
+              const SizedBox(height: 28),
+
+              // ── Section: Goal & Diet ──────────────────────────────────
+              const SectionHeader(title: 'Goals & Nutrition'),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _primaryGoal,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Primary Health Goal',
+                  prefixIcon: Icon(Icons.track_changes_rounded),
+                ),
+                items: _goalsList
+                    .map(
+                      (g) => DropdownMenuItem(
+                        value: g,
+                        child: Text(g, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) =>
+                    setState(() => _primaryGoal = v ?? _primaryGoal),
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<String>(
+                initialValue: _dietType,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Diet Style',
+                  prefixIcon: Icon(Icons.restaurant_menu_rounded),
+                ),
+                items: _dietStyles
+                    .map(
+                      (d) => DropdownMenuItem(
+                        value: d,
+                        child: Text(d),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _dietType = v ?? _dietType),
               ),
 
               const SizedBox(height: 28),
@@ -317,7 +400,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
               const SectionHeader(title: 'Active Conditions'),
               const SizedBox(height: 4),
               Text(
-                'Select all that apply — this personalises your AI recommendations.',
+                'Select all that apply — this personalises your health insights.',
                 style: TextStyle(
                   fontSize: 12,
                   color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -332,38 +415,49 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
                       (c) => _ConditionChip(
                         label: c,
                         selected: _conditions.contains(c),
-                        onToggle: () {
-                          setState(() {
-                            if (_conditions.contains(c)) {
-                              _conditions.remove(c);
-                            } else {
-                              _conditions.add(c);
-                            }
-                          });
-                        },
+                        onToggle: () => setState(() {
+                          if (_conditions.contains(c)) {
+                            _conditions.remove(c);
+                          } else {
+                            _conditions.add(c);
+                          }
+                        }),
                       ),
                     )
                     .toList(),
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 28),
 
-              // ── Save button ────────────────────────────────────────────
-              PrimaryButton(
-                text: 'Save Changes',
-                onPressed: _isSaving ? () {} : _save,
-                icon: Icons.check_rounded,
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => context.pop(),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    fontSize: 14,
-                  ),
+              // ── Section: Allergies ────────────────────────────────────
+              const SectionHeader(title: 'Known Allergies'),
+              const SizedBox(height: 4),
+              Text(
+                'Select sensitivities to screen meal recommendations.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _allAllergies
+                    .map(
+                      (a) => _ConditionChip(
+                        label: a,
+                        selected: _allergies.contains(a),
+                        onToggle: () => setState(() {
+                          if (_allergies.contains(a)) {
+                            _allergies.remove(a);
+                          } else {
+                            _allergies.add(a);
+                          }
+                        }),
+                      ),
+                    )
+                    .toList(),
               ),
             ],
           ),
@@ -373,154 +467,113 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
   }
 }
 
-// ── Condition chip (Apple §1: spring scale on tap-down) ────────────────────────
+// ── Condition Chip ─────────────────────────────────────────────────────────────
 
-class _ConditionChip extends StatefulWidget {
+class _ConditionChip extends StatelessWidget {
   const _ConditionChip({
     required this.label,
     required this.selected,
     required this.onToggle,
   });
+
   final String label;
   final bool selected;
   final VoidCallback onToggle;
 
   @override
-  State<_ConditionChip> createState() => _ConditionChipState();
-}
-
-class _ConditionChipState extends State<_ConditionChip> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
-    
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onToggle();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 120),
-        scale: _pressed ? 0.93 : 1.0,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: widget.selected
-                ? colorScheme.primary.withValues(alpha: 0.16)
-                : colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: widget.selected
-                  ? colorScheme.primary.withValues(alpha: 0.55)
-                  : theme.dividerColor,
-              width: widget.selected ? 1.5 : 1.0,
-            ),
+    final colorScheme = theme.colorScheme;
+
+    return _TapScale(
+      onTap: onToggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? colorScheme.primary.withValues(alpha: 0.12)
+              : colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? colorScheme.primary : theme.dividerColor,
+            width: selected ? 1.5 : 1,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: Icon(
-                  widget.selected
-                      ? Icons.check_rounded
-                      : Icons.add_rounded,
-                  key: ValueKey(widget.selected),
-                  size: 14,
-                  color: widget.selected
-                      ? colorScheme.primary
-                      : colorScheme.onSurface.withValues(alpha: 0.4),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: widget.selected
-                      ? colorScheme.primary
-                      : colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-              ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected) ...[
+              Icon(Icons.check_rounded, size: 14, color: colorScheme.primary),
+              const SizedBox(width: 5),
             ],
-          ),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected
+                    ? colorScheme.primary
+                    : colorScheme.onSurface.withValues(alpha: 0.8),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Save button ────────────────────────────────────────────────────────────────
+// ── Save Button ───────────────────────────────────────────────────────────────
 
-class _SaveButton extends StatefulWidget {
+class _SaveButton extends StatelessWidget {
   const _SaveButton({required this.loading, required this.onPressed});
   final bool loading;
   final VoidCallback onPressed;
 
   @override
-  State<_SaveButton> createState() => _SaveButtonState();
-}
-
-class _SaveButtonState extends State<_SaveButton> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onPressed();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 120),
-        scale: _pressed ? 0.94 : 1.0,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: colorScheme.primary,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: widget.loading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Text(
-                  'Save',
-                  style: TextStyle(
-                    color: colorScheme.onPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
+
+    return _TapScale(
+      onTap: loading ? () {} : onPressed,
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: colorScheme.primary,
+          borderRadius: BorderRadius.circular(12),
         ),
+        alignment: Alignment.center,
+        child: loading
+            ? SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colorScheme.onPrimary,
+                ),
+              )
+            : Text(
+                'Save',
+                style: TextStyle(
+                  color: colorScheme.onPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
       ),
     );
   }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// ── Tap-scale utility ─────────────────────────────────────────────────────────
 
 class _TapScale extends StatefulWidget {
-  const _TapScale({required this.child, required this.onTap});
-  final Widget child;
+  const _TapScale({required this.onTap, required this.child});
   final VoidCallback onTap;
+  final Widget child;
 
   @override
   State<_TapScale> createState() => _TapScaleState();
@@ -539,7 +592,7 @@ class _TapScaleState extends State<_TapScale> {
       },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
-        duration: const Duration(milliseconds: 130),
+        duration: const Duration(milliseconds: 110),
         scale: _pressed ? 0.95 : 1.0,
         child: widget.child,
       ),

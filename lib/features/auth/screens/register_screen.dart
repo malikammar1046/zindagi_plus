@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zindagi_plus/data/models/user.dart';
+import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
+import 'package:zindagi_plus/providers/repository_providers.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -21,6 +22,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -33,26 +35,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    await Future.delayed(const Duration(seconds: 1));
+    final result = await ref.read(authRepositoryProvider).register(
+          _nameCtrl.text.trim(),
+          _emailCtrl.text.trim(),
+          _passwordCtrl.text,
+        );
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    final user = User(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _nameCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-    );
-    ref.read(authNotifierProvider.notifier).setUser(user);
+    switch (result) {
+      case Success(data: final user):
+        ref.read(authNotifierProvider.notifier).setUser(user);
+      case Failure(message: final msg):
+        setState(() => _errorMessage = msg);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Account'),
@@ -165,6 +174,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       : null,
                 ),
 
+                // ── Error banner ───────────────────────────────────────────
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colorScheme.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: colorScheme.error.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline,
+                            color: colorScheme.error, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                                color: colorScheme.error, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 32),
 
                 // ── Register button ────────────────────────────────────────
@@ -182,7 +219,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     Text(
                       'Already have an account?  ',
                       style: TextStyle(
-                        color: colorScheme.onSurface.withValues(alpha: 0.6), 
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: 14,
                       ),
                     ),

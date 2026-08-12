@@ -10,6 +10,17 @@ class AuthNotifier extends StateNotifier<User?> {
 
   /// Clears the session — triggers redirect to `/login` via GoRouter.
   void logout() => state = null;
+
+  /// Updates the current user's profile fields and notifies listeners.
+  void updateProfile(User updated) {
+    state = updated;
+  }
+
+  /// Marks onboarding as complete, updating the user profile and triggering
+  /// router re-evaluation to navigate into the main app shell.
+  void completeOnboarding(User completedUser) {
+    state = completedUser.copyWith(isOnboardingCompleted: true);
+  }
 }
 
 /// Global auth state.

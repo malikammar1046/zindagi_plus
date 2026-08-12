@@ -3,7 +3,18 @@ import 'package:go_router/go_router.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class ReportDetailScreen extends StatelessWidget {
-  const ReportDetailScreen({super.key});
+  const ReportDetailScreen({
+    super.key,
+    this.reportId,
+    this.fileName,
+  });
+
+  /// The stable report identifier used to fetch data from the backend.
+  /// Null when navigating from the mock upload flow without an explicit ID.
+  final String? reportId;
+
+  /// The original file name shown in the summary card.
+  final String? fileName;
 
   static const _biomarkers = <Map<String, dynamic>>[
     {
@@ -76,19 +87,25 @@ class ReportDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Lab Report Analysis')),
-        body: ListView(
+      body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
         children: [
-          _SummaryCard(),
+          _SummaryCard(
+            reportId: reportId ?? 'report_001',
+            fileName: fileName ?? 'Blood_Report_July_2025.jpg',
+            onExplain: () => context.push(
+              '/upload/explanation',
+              extra: {'reportId': reportId ?? 'report_001'},
+            ),
+          ),
           const SizedBox(height: 20),
-          // Counts row
           _StatusCountsRow(biomarkers: _biomarkers),
           const SizedBox(height: 20),
           Text(
             'Biomarker Results',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 12),
           ..._biomarkers.map((b) => _BiomarkerCard(biomarker: b)),
@@ -100,13 +117,23 @@ class ReportDetailScreen extends StatelessWidget {
 }
 
 class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({
+    required this.reportId,
+    required this.fileName,
+    required this.onExplain,
+  });
+
+  final String reportId;
+  final String fileName;
+  final VoidCallback onExplain;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return AppCard(
       padding: const EdgeInsets.all(20),
-      color: colorScheme.primary, // Make it emerald solid background
+      color: colorScheme.primary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -140,20 +167,21 @@ class _SummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Blood_Report_July_2025.jpg',
+            fileName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(color: colorScheme.onPrimary, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
-            '8 values extracted  ·  Analysed just now',
+            'ID: $reportId  ·  8 values extracted  ·  Analysed just now',
             style: TextStyle(
-                color: colorScheme.onPrimary.withValues(alpha: 0.75), fontSize: 12),
+                color: colorScheme.onPrimary.withValues(alpha: 0.75),
+                fontSize: 12),
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
-            onPressed: () {
-              context.push('/upload/explanation');
-            },
+            onPressed: onExplain,
             icon: const Icon(Icons.auto_awesome_rounded, color: Colors.white),
             label: const Text(
               'Explain in Simple Language',
@@ -190,7 +218,7 @@ class _StatusCountsRow extends StatelessWidget {
 
     return Row(
       children: [
-        _CountChip(count: normal, label: 'Normal', color: const Color(0xFF00674F)), // Emerald
+        _CountChip(count: normal, label: 'Normal', color: const Color(0xFF00674F)),
         const SizedBox(width: 10),
         _CountChip(count: borderline, label: 'Borderline', color: Colors.orange),
         const SizedBox(width: 10),
@@ -282,7 +310,8 @@ class _BiomarkerCard extends StatelessWidget {
                 Text(
                   biomarker['range'] as String,
                   style: TextStyle(
-                      fontSize: 11, color: colorScheme.onSurface.withValues(alpha: 0.6)),
+                      fontSize: 11,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
               ],
             ),

@@ -1,84 +1,22 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/data/models/medication.dart';
+import 'package:zindagi_plus/providers/medication_provider.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
-// ── Mock data ──────────────────────────────────────────────────────────────────
-
-enum _MedStatus { taken, pending, missed }
-
-class _Medication {
-  _Medication({
-    required this.name,
-    required this.dose,
-    required this.time,
-    required this.status,
-    required this.icon,
-    required this.color,
-    required this.note,
-  });
-  final String name, dose, time, note;
-  _MedStatus status;
-  final IconData icon;
-  final Color color;
-}
-
-final _medications = [
-  _Medication(
-    name: 'Metformin',
-    dose: '500mg',
-    time: '8:00 AM — With breakfast',
-    status: _MedStatus.taken,
-    icon: Icons.medication_rounded,
-    color: const Color(0xFF00674F), // Emerald
-    note: 'For blood glucose control',
-  ),
-  _Medication(
-    name: 'Vitamin D3',
-    dose: '2000 IU',
-    time: '1:00 PM — With lunch',
-    status: _MedStatus.pending,
-    icon: Icons.wb_sunny_outlined,
-    color: Colors.orange,
-    note: 'Deficiency correction',
-  ),
-  _Medication(
-    name: 'Omega-3',
-    dose: '1000mg',
-    time: '8:00 PM — With dinner',
-    status: _MedStatus.pending,
-    icon: Icons.water_drop_outlined,
-    color: Colors.blue,
-    note: 'For LDL cholesterol support',
-  ),
-  _Medication(
-    name: 'Metformin (Evening)',
-    dose: '500mg',
-    time: '8:00 PM — With dinner',
-    status: _MedStatus.missed,
-    icon: Icons.medication_rounded,
-    color: const Color(0xFF670018), // Burgundy
-    note: 'Missed yesterday',
-  ),
-];
-
-// ── Screen ─────────────────────────────────────────────────────────────────────
-
-class MedicationListScreen extends StatefulWidget {
+class MedicationListScreen extends ConsumerStatefulWidget {
   const MedicationListScreen({super.key});
 
   @override
-  State<MedicationListScreen> createState() => _MedicationListScreenState();
+  ConsumerState<MedicationListScreen> createState() =>
+      _MedicationListScreenState();
 }
 
-class _MedicationListScreenState extends State<MedicationListScreen>
+class _MedicationListScreenState extends ConsumerState<MedicationListScreen>
     with TickerProviderStateMixin {
   late final AnimationController _ringCtrl;
-  late final List<AnimationController> _cardCtls;
-
-  int get _takenCount =>
-      _medications.where((m) => m.status == _MedStatus.taken).length;
-  int get _totalCount => _medications.length;
-  double get _adherence => _totalCount == 0 ? 0 : _takenCount / _totalCount;
 
   @override
   void initState() {
@@ -87,59 +25,40 @@ class _MedicationListScreenState extends State<MedicationListScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1300),
     )..forward();
-    _cardCtls = List.generate(
-      _medications.length,
-      (_) => AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 400),
-      ),
-    );
-    for (int i = 0; i < _cardCtls.length; i++) {
-      Future.delayed(Duration(milliseconds: 250 + i * 90), () {
-        if (mounted) _cardCtls[i].forward();
-      });
-    }
   }
 
   @override
   void dispose() {
     _ringCtrl.dispose();
-    for (final c in _cardCtls) {
-      c.dispose();
-    }
     super.dispose();
-  }
-
-  void _toggleStatus(int index) {
-    setState(() {
-      final m = _medications[index];
-      if (m.status == _MedStatus.pending) {
-        m.status = _MedStatus.taken;
-      } else if (m.status == _MedStatus.taken) {
-        m.status = _MedStatus.missed;
-      } else {
-        m.status = _MedStatus.pending;
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+    final medications = ref.watch(medicationProvider);
+    final notifier = ref.read(medicationProvider.notifier);
+
+    final takenCount = notifier.takenCount;
+    final totalCount = notifier.totalCount;
+    final adherence = notifier.adherence;
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text('Medications'),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () => context.push('/medication-history'),
+            tooltip: 'Dose History',
             icon: const Icon(Icons.history_rounded),
           ),
         ],
       ),
-      floatingActionButton: _AddMedFab(),
+      floatingActionButton: _AddMedFab(
+        onTap: () => context.push('/add-medication'),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
         children: [
@@ -160,7 +79,7 @@ class _MedicationListScreenState extends State<MedicationListScreen>
                       height: 88,
                       child: CustomPaint(
                         painter: _AdherenceRingPainter(
-                          progress: _adherence * t,
+                          progress: adherence * t,
                           trackColor: theme.dividerColor,
                           progressColor: colorScheme.primary,
                         ),
@@ -169,7 +88,7 @@ class _MedicationListScreenState extends State<MedicationListScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                '${(_adherence * t * 100).round()}%',
+                                '${(adherence * t * 100).round()}%',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -180,7 +99,8 @@ class _MedicationListScreenState extends State<MedicationListScreen>
                                 'today',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
                                 ),
                               ),
                             ],
@@ -203,10 +123,11 @@ class _MedicationListScreenState extends State<MedicationListScreen>
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '$_takenCount of $_totalCount doses taken',
+                            '$takenCount of $totalCount doses taken',
                             style: TextStyle(
                               fontSize: 13,
-                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                              color: colorScheme.onSurface
+                                  .withValues(alpha: 0.7),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -233,31 +154,29 @@ class _MedicationListScreenState extends State<MedicationListScreen>
           const SizedBox(height: 16),
 
           // ── Medication cards ──────────────────────────────────────────
-          ...List.generate(_medications.length, (i) {
-            return AnimatedBuilder(
-              animation: _cardCtls[i],
-              builder: (_, child) {
-                final t = CurvedAnimation(
-                  parent: _cardCtls[i],
-                  curve: Curves.easeOutBack,
-                ).value.clamp(0.0, 1.0);
-                return Opacity(
-                  opacity: t,
-                  child: Transform.translate(
-                    offset: Offset(0, (1 - t) * 20),
-                    child: child,
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _MedCard(
-                  med: _medications[i],
-                  onToggle: () => _toggleStatus(i),
+          if (medications.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(
+                child: Text(
+                  'No medications added yet.\nTap below to add your first prescription.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, height: 1.5),
                 ),
               ),
-            );
-          }),
+            )
+          else
+            ...List.generate(medications.length, (i) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _MedCard(
+                  med: medications[i],
+                  onToggle: () => ref
+                      .read(medicationProvider.notifier)
+                      .toggleStatus(i),
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -268,7 +187,7 @@ class _MedicationListScreenState extends State<MedicationListScreen>
 
 class _MedCard extends StatefulWidget {
   const _MedCard({required this.med, required this.onToggle});
-  final _Medication med;
+  final Medication med;
   final VoidCallback onToggle;
 
   @override
@@ -280,25 +199,34 @@ class _MedCardState extends State<_MedCard> {
 
   Color _getStatusColor(ColorScheme scheme) {
     return switch (widget.med.status) {
-      _MedStatus.taken => scheme.primary,
-      _MedStatus.pending => Colors.orange,
-      _MedStatus.missed => Colors.red,
+      MedStatus.taken => scheme.primary,
+      MedStatus.pending => Colors.orange,
+      MedStatus.missed => Colors.red,
     };
   }
 
   String get _statusLabel {
     return switch (widget.med.status) {
-      _MedStatus.taken => 'Taken ✓',
-      _MedStatus.pending => 'Pending',
-      _MedStatus.missed => 'Missed',
+      MedStatus.taken => 'Taken ✓',
+      MedStatus.pending => 'Pending',
+      MedStatus.missed => 'Missed',
     };
   }
 
   IconData get _statusIcon {
     return switch (widget.med.status) {
-      _MedStatus.taken => Icons.check_circle_rounded,
-      _MedStatus.pending => Icons.radio_button_unchecked_rounded,
-      _MedStatus.missed => Icons.cancel_outlined,
+      MedStatus.taken => Icons.check_circle_rounded,
+      MedStatus.pending => Icons.radio_button_unchecked_rounded,
+      MedStatus.missed => Icons.cancel_outlined,
+    };
+  }
+
+  IconData _getMedIcon(int codePoint) {
+    return switch (codePoint) {
+      0xe8fa => Icons.wb_sunny_outlined,
+      0xe798 => Icons.water_drop_outlined,
+      0xe3a3 => Icons.medication_rounded,
+      _ => Icons.medication_rounded,
     };
   }
 
@@ -307,6 +235,8 @@ class _MedCardState extends State<_MedCard> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final statusColor = _getStatusColor(colorScheme);
+    final itemColor = Color(widget.med.colorValue);
+    final itemIcon = _getMedIcon(widget.med.iconCodePoint);
 
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
@@ -327,13 +257,13 @@ class _MedCardState extends State<_MedCard> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: widget.med.color.withValues(alpha: 0.15),
+                  color: itemColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: widget.med.color.withValues(alpha: 0.2),
+                    color: itemColor.withValues(alpha: 0.2),
                   ),
                 ),
-                child: Icon(widget.med.icon, color: widget.med.color, size: 22),
+                child: Icon(itemIcon, color: itemColor, size: 22),
               ),
               const SizedBox(width: 14),
               // Info
@@ -373,19 +303,21 @@ class _MedCardState extends State<_MedCard> {
                         color: colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.med.note,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: widget.med.color,
-                        fontWeight: FontWeight.w600,
+                    if (widget.med.note.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.med.note,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: itemColor,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
-              // Status toggle (Apple §1: tap → instant visual response)
+              // Status toggle
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 220),
                 transitionBuilder: (child, anim) => ScaleTransition(
@@ -416,9 +348,12 @@ class _MedCardState extends State<_MedCard> {
   }
 }
 
-// ── Add med FAB (Apple §1: respond on pointer-down) ───────────────────────────
+// ── Add med FAB ───────────────────────────────────────────────────────────────
 
 class _AddMedFab extends StatefulWidget {
+  const _AddMedFab({required this.onTap});
+  final VoidCallback onTap;
+
   @override
   State<_AddMedFab> createState() => _AddMedFabState();
 }
@@ -429,10 +364,13 @@ class _AddMedFabState extends State<_AddMedFab> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
         duration: const Duration(milliseconds: 120),
@@ -482,7 +420,7 @@ class _StatusDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -498,7 +436,7 @@ class _StatusDot extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11, 
+            fontSize: 11,
             color: colorScheme.onSurface.withValues(alpha: 0.8),
             fontWeight: FontWeight.w500,
           ),

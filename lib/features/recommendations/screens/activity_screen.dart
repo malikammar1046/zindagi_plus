@@ -1,67 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 // ── Mock data ──────────────────────────────────────────────────────────────────
 
 const _activities = [
   (
+    id: 'act_001',
     emoji: '🚶',
     name: 'Morning Walk',
     duration: '30 min',
     intensity: 'Low',
     calories: '120 kcal',
     category: 'Cardio',
-    desc: 'A brisk 30-minute walk first thing in the morning on an empty stomach maximises fat oxidation and improves insulin sensitivity.',
+    desc:
+        'A brisk 30-minute walk first thing in the morning on an empty stomach maximises fat oxidation and improves insulin sensitivity.',
     benefit: 'Best for your blood sugar levels',
   ),
   (
+    id: 'act_002',
     emoji: '🧘',
     name: 'Yoga & Stretching',
     duration: '20 min',
     intensity: 'Low',
     calories: '65 kcal',
     category: 'Flexibility',
-    desc: 'Gentle yoga reduces cortisol levels, which directly impacts blood glucose. The stretching component improves circulation to muscles.',
+    desc:
+        'Gentle yoga reduces cortisol levels, which directly impacts blood glucose. The stretching component improves circulation to muscles.',
     benefit: 'Reduces stress & cortisol',
   ),
   (
+    id: 'act_003',
     emoji: '🚴',
     name: 'Cycling (Stationary)',
     duration: '20 min',
     intensity: 'Medium',
     calories: '180 kcal',
     category: 'Cardio',
-    desc: 'Stationary cycling is joint-friendly and provides an excellent cardiovascular workout. It significantly increases glucose uptake in muscles.',
+    desc:
+        'Stationary cycling is joint-friendly and provides an excellent cardiovascular workout. It significantly increases glucose uptake in muscles.',
     benefit: 'Burns 180 kcal efficiently',
   ),
   (
+    id: 'act_004',
     emoji: '🏊',
     name: 'Swimming',
     duration: '30 min',
     intensity: 'Medium',
     calories: '240 kcal',
     category: 'Full Body',
-    desc: 'Swimming engages all major muscle groups and has minimal joint impact. It is particularly beneficial for those managing weight and blood glucose.',
+    desc:
+        'Swimming engages all major muscle groups and has minimal joint impact. It is particularly beneficial for those managing weight and blood glucose.',
     benefit: 'Full body, zero joint stress',
   ),
   (
+    id: 'act_005',
     emoji: '💪',
     name: 'Resistance Training',
     duration: '25 min',
     intensity: 'High',
     calories: '200 kcal',
     category: 'Strength',
-    desc: 'Building muscle mass increases your resting metabolic rate and significantly improves long-term insulin sensitivity — a key goal for your profile.',
+    desc:
+        'Building muscle mass increases your resting metabolic rate and significantly improves long-term insulin sensitivity — a key goal for your profile.',
     benefit: 'Builds insulin sensitivity',
   ),
   (
+    id: 'act_006',
     emoji: '🤸',
     name: 'Bodyweight Circuit',
     duration: '20 min',
     intensity: 'High',
     calories: '220 kcal',
     category: 'Strength',
-    desc: 'Squats, push-ups and lunges performed in a circuit burns calories efficiently and requires no equipment. Great for home workouts.',
+    desc:
+        'Squats, push-ups and lunges performed in a circuit burns calories efficiently and requires no equipment. Great for home workouts.',
     benefit: 'No equipment needed',
   ),
 ];
@@ -81,6 +94,7 @@ class _ActivityScreenState extends State<ActivityScreen>
     with TickerProviderStateMixin {
   String _selectedCategory = 'All';
   late final List<AnimationController> _cardCtls;
+  final Set<String> _weeklyPlan = {'act_001', 'act_002'}; // Pre-selected activities
 
   List<int> get _filteredIndices {
     if (_selectedCategory == 'All') {
@@ -114,6 +128,31 @@ class _ActivityScreenState extends State<ActivityScreen>
     }
   }
 
+  void _toggleWeeklyActivity(String id, String name) {
+    setState(() {
+      if (_weeklyPlan.contains(id)) {
+        _weeklyPlan.remove(id);
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$name removed from this week\'s plan'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        _weeklyPlan.add(id);
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$name added to this week\'s plan!'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    });
+  }
+
   @override
   void dispose() {
     for (final c in _cardCtls) {
@@ -139,7 +178,8 @@ class _ActivityScreenState extends State<ActivityScreen>
             decoration: BoxDecoration(
               color: colorScheme.secondary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: colorScheme.secondary.withValues(alpha: 0.3)),
+              border: Border.all(
+                  color: colorScheme.secondary.withValues(alpha: 0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -151,7 +191,7 @@ class _ActivityScreenState extends State<ActivityScreen>
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '3/5 days',
+                  '${_weeklyPlan.length}/5 planned',
                   style: TextStyle(
                     color: colorScheme.secondary,
                     fontSize: 12,
@@ -192,7 +232,8 @@ class _ActivityScreenState extends State<ActivityScreen>
                           'Personalised for blood sugar management & weight',
                           style: TextStyle(
                             fontSize: 12,
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                            color:
+                                colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -234,6 +275,7 @@ class _ActivityScreenState extends State<ActivityScreen>
               itemBuilder: (_, pos) {
                 final i = indices[pos];
                 final act = _activities[i];
+                final isAdded = _weeklyPlan.contains(act.id);
                 return AnimatedBuilder(
                   animation: _cardCtls[i],
                   builder: (_, child) {
@@ -249,7 +291,12 @@ class _ActivityScreenState extends State<ActivityScreen>
                       ),
                     );
                   },
-                  child: _ActivityCard(activity: act),
+                  child: _ActivityCard(
+                    activity: act,
+                    isAdded: isAdded,
+                    onToggleWeek: () =>
+                        _toggleWeeklyActivity(act.id, act.name),
+                  ),
                 );
               },
             ),
@@ -280,7 +327,7 @@ class _CategoryChipState extends State<_CategoryChip> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -311,7 +358,9 @@ class _CategoryChipState extends State<_CategoryChip> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: widget.selected ? colorScheme.onPrimary : colorScheme.onSurface.withValues(alpha: 0.7),
+              color: widget.selected
+                  ? colorScheme.onPrimary
+                  : colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ),
@@ -321,8 +370,14 @@ class _CategoryChipState extends State<_CategoryChip> {
 }
 
 class _ActivityCard extends StatefulWidget {
-  const _ActivityCard({required this.activity});
+  const _ActivityCard({
+    required this.activity,
+    required this.isAdded,
+    required this.onToggleWeek,
+  });
+
   final ({
+    String id,
     String emoji,
     String name,
     String duration,
@@ -332,6 +387,9 @@ class _ActivityCard extends StatefulWidget {
     String desc,
     String benefit,
   }) activity;
+
+  final bool isAdded;
+  final VoidCallback onToggleWeek;
 
   @override
   State<_ActivityCard> createState() => _ActivityCardState();
@@ -348,7 +406,7 @@ class _ActivityCardState extends State<_ActivityCard> {
       case 'medium':
         return Colors.orange;
       case 'high':
-        return colorScheme.secondary; // Burgundy
+        return colorScheme.secondary;
       default:
         return colorScheme.primary;
     }
@@ -358,7 +416,7 @@ class _ActivityCardState extends State<_ActivityCard> {
   Widget build(BuildContext context) {
     final act = widget.activity;
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -387,28 +445,56 @@ class _ActivityCardState extends State<_ActivityCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          act.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: colorScheme.onSurface,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                act.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            if (widget.isAdded) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primary
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'This Week',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 6,
                           runSpacing: 4,
                           children: [
-                            _Badge(act.duration, colorScheme.onSurface.withValues(alpha: 0.6)),
+                            _Badge(act.duration,
+                                colorScheme.onSurface.withValues(alpha: 0.6)),
                             _Badge(
                               act.intensity,
                               _getIntensityColor(act.intensity, colorScheme),
                               border: true,
                             ),
-                            _Badge(act.calories, colorScheme.onSurface.withValues(alpha: 0.6)),
+                            _Badge(act.calories,
+                                colorScheme.onSurface.withValues(alpha: 0.6)),
                           ],
                         ),
                       ],
@@ -439,7 +525,8 @@ class _ActivityCardState extends State<_ActivityCard> {
                             act.desc,
                             style: TextStyle(
                               fontSize: 14,
-                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                              color:
+                                  colorScheme.onSurface.withValues(alpha: 0.7),
                               height: 1.5,
                             ),
                           ),
@@ -467,11 +554,22 @@ class _ActivityCardState extends State<_ActivityCard> {
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
-                            child: SecondaryButton(
-                              onPressed: () {},
-                              label: 'Add to This Week',
-                              icon: Icons.add_rounded,
-                            ),
+                            child: widget.isAdded
+                                ? OutlinedButton.icon(
+                                    onPressed: widget.onToggleWeek,
+                                    icon: Icon(Icons.check_rounded,
+                                        color: colorScheme.primary),
+                                    label: Text(
+                                      'Added to This Week (Tap to Remove)',
+                                      style: TextStyle(
+                                          color: colorScheme.primary),
+                                    ),
+                                  )
+                                : SecondaryButton(
+                                    onPressed: widget.onToggleWeek,
+                                    label: 'Add to This Week',
+                                    icon: Icons.add_rounded,
+                                  ),
                           ),
                         ],
                       )
@@ -520,24 +618,15 @@ class _NearbyButton extends StatefulWidget {
 class _NearbyButtonState extends State<_NearbyButton> {
   bool _pressed = false;
 
-  void _showNearby() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => const _NearbySheet(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
         setState(() => _pressed = false);
-        _showNearby();
+        context.push('/nearby-facilities');
       },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
@@ -553,7 +642,8 @@ class _NearbyButtonState extends State<_NearbyButton> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.location_on_outlined, color: colorScheme.primary, size: 18),
+              Icon(Icons.location_on_outlined,
+                  color: colorScheme.primary, size: 18),
               const SizedBox(height: 2),
               Text(
                 'Nearby',
@@ -566,102 +656,6 @@ class _NearbyButtonState extends State<_NearbyButton> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _NearbySheet extends StatelessWidget {
-  const _NearbySheet();
-
-  static const _facilities = [
-    (name: 'City Fitness Centre', distance: '0.4 km', type: 'Gym', rating: '4.6'),
-    (name: 'Green Park Walking Track', distance: '0.7 km', type: 'Outdoor', rating: '4.8'),
-    (name: 'AquaSport Pool', distance: '1.2 km', type: 'Swimming', rating: '4.5'),
-    (name: 'Zen Yoga Studio', distance: '1.5 km', type: 'Yoga', rating: '4.7'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 16),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: theme.dividerColor,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Icon(Icons.location_on_rounded, color: colorScheme.primary, size: 24),
-                const SizedBox(width: 12),
-                Text(
-                  'Nearby Facilities',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          ..._facilities.map(
-            (f) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-              leading: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  Icons.place_rounded,
-                  color: colorScheme.primary,
-                  size: 24,
-                ),
-              ),
-              title: Text(
-                f.name,
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
-              subtitle: Text(
-                '${f.type} · ${f.distance} · ⭐ ${f.rating}',
-                style: TextStyle(
-                  color: colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontSize: 13,
-                ),
-              ),
-              trailing: Icon(
-                Icons.directions_rounded,
-                color: colorScheme.primary,
-                size: 24,
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-        ],
       ),
     );
   }

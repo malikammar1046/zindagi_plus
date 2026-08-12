@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/providers/auth_provider.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
-class EmailVerificationScreen extends StatefulWidget {
+class EmailVerificationScreen extends ConsumerStatefulWidget {
   const EmailVerificationScreen({super.key});
 
   @override
-  State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
+  ConsumerState<EmailVerificationScreen> createState() =>
+      _EmailVerificationScreenState();
 }
 
-class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
+class _EmailVerificationScreenState
+    extends ConsumerState<EmailVerificationScreen> {
   final TextEditingController _otpCtrl = TextEditingController();
   bool _isLoading = false;
 
@@ -22,17 +26,23 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   Future<void> _verify() async {
     if (_otpCtrl.text.isEmpty) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1500));
+    await Future.delayed(const Duration(milliseconds: 1000));
     if (!mounted) return;
     setState(() => _isLoading = false);
-    context.go('/dashboard');
+
+    final user = ref.read(authNotifierProvider);
+    if (user != null && !user.isOnboardingCompleted) {
+      context.go('/onboarding/setup');
+    } else {
+      context.go('/dashboard');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Scaffold(
       appBar: AppBar(
         leading: GestureDetector(
@@ -104,7 +114,12 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 ),
                 GestureDetector(
                   onTap: () {
-                    // Logic to resend code
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('A fresh code has been sent!'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
                   },
                   child: Text(
                     'Resend',

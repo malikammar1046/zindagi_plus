@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zindagi_plus/core/network/result.dart';
+import 'package:zindagi_plus/data/models/lab_report.dart';
 import 'package:zindagi_plus/providers/repository_providers.dart';
 
 /// Provides dashboard data.
@@ -21,6 +22,17 @@ final mealRecommendationsProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final repo = ref.read(healthRepositoryProvider);
   final result = await repo.getMealRecommendations();
+  return switch (result) {
+    Success(data: final d) => d,
+    Failure(message: final m) => throw Exception(m),
+  };
+});
+
+/// Provides the lab report history list.
+final reportHistoryProvider =
+    FutureProvider.autoDispose<List<LabReport>>((ref) async {
+  final repo = ref.read(labReportRepositoryProvider);
+  final result = await repo.getReportHistory();
   return switch (result) {
     Success(data: final d) => d,
     Failure(message: final m) => throw Exception(m),

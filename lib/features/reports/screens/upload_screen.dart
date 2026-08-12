@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:zindagi_plus/features/reports/screens/report_processing_screen.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class UploadScreen extends ConsumerStatefulWidget {
@@ -15,6 +16,9 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
   final _picker = ImagePicker();
   bool _picking = false;
 
+  // DEV-only: the scenario to simulate in ReportProcessingScreen.
+  MockProcessingScenario _devScenario = MockProcessingScenario.success;
+
   Future<void> _pickAndProcess() async {
     if (_picking) return;
     setState(() => _picking = true);
@@ -26,9 +30,14 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         setState(() => _picking = false);
         return;
       }
-      // Apple §7: navigate forward along the upload flow path
-      // Pass fileName so the processing screen can display it
-      context.push('/upload/processing', extra: file.name);
+      // Pass fileName and the selected dev scenario.
+      context.push(
+        '/upload/processing',
+        extra: {
+          'fileName': file.name,
+          'scenario': _devScenario,
+        },
+      );
     } catch (e) {
       if (!mounted) return;
       final colorScheme = Theme.of(context).colorScheme;
@@ -43,6 +52,76 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     }
   }
 
+  void _showScenarioPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) {
+        final colorScheme = Theme.of(ctx).colorScheme;
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.onSurface.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  '[DEV] Select Mock Scenario',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _ScenarioTile(
+                label: '✅  Success',
+                subtitle: 'All steps complete — navigate to result',
+                selected: _devScenario == MockProcessingScenario.success,
+                onTap: () {
+                  setState(
+                      () => _devScenario = MockProcessingScenario.success);
+                  Navigator.pop(ctx);
+                },
+              ),
+              _ScenarioTile(
+                label: '🚫  Invalid File',
+                subtitle: 'Fails at step 1 — OCR cannot read document',
+                selected: _devScenario == MockProcessingScenario.invalidFile,
+                onTap: () {
+                  setState(
+                      () => _devScenario = MockProcessingScenario.invalidFile);
+                  Navigator.pop(ctx);
+                },
+              ),
+              _ScenarioTile(
+                label: '⚠️  Processing Failure',
+                subtitle: 'Fails at step 3 — AI analysis error',
+                selected:
+                    _devScenario == MockProcessingScenario.processingFailure,
+                onTap: () {
+                  setState(() =>
+                      _devScenario = MockProcessingScenario.processingFailure);
+                  Navigator.pop(ctx);
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -51,19 +130,43 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       appBar: AppBar(
         title: const Text('Upload Lab Report'),
         automaticallyImplyLeading: false,
+        actions: [
+          // View history button
+          IconButton(
+            icon: const Icon(Icons.history_rounded),
+            tooltip: 'My Reports',
+            onPressed: () => context.push('/report-history'),
+          ),
+          // DEV scenario picker
+          GestureDetector(
+            onTap: _showScenarioPicker,
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+              ),
+              child: const Text(
+                'DEV',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.orange,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             const SizedBox(height: 12),
-
-            // ── Upload card ──────────────────────────────────────────────
             Expanded(child: _UploadCard(onTap: _picking ? null : _pickAndProcess)),
-
             const SizedBox(height: 20),
-
-            // ── Info banner ──────────────────────────────────────────────
             AppCard(
               padding: const EdgeInsets.all(14),
               child: Row(
@@ -86,7 +189,6 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 12),
           ],
         ),
@@ -95,7 +197,39 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
   }
 }
 
-// ── Upload card ────────────────────────────────────────────────────────────────
+class _ScenarioTile extends StatelessWidget {
+  const _ScenarioTile({
+    required this.label,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label, subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ListTile(
+      title: Text(label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: selected ? colorScheme.primary : colorScheme.onSurface,
+          )),
+      subtitle: Text(subtitle,
+          style: TextStyle(
+              fontSize: 12,
+              color: colorScheme.onSurface.withValues(alpha: 0.6))),
+      trailing: selected
+          ? Icon(Icons.check_circle_rounded, color: colorScheme.primary)
+          : null,
+      onTap: onTap,
+    );
+  }
+}
+
+// ── Upload card (preserved exactly, only minor ref change) ────────────────────
 
 class _UploadCard extends StatefulWidget {
   const _UploadCard({required this.onTap});
@@ -130,7 +264,6 @@ class _UploadCardState extends State<_UploadCard>
     final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      // Apple §1: respond on pointer-down
       onTapDown: widget.onTap == null ? null : (_) => setState(() => _pressed = true),
       onTapUp: (_) {
         setState(() => _pressed = false);
@@ -160,7 +293,6 @@ class _UploadCardState extends State<_UploadCard>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Pulsing icon circle
                   AnimatedBuilder(
                     animation: _pulseCtrl,
                     builder: (_, _) => Container(

@@ -12,6 +12,12 @@ abstract class AuthRepository {
   /// or [Failure<User>] with an error message otherwise.
   Future<Result<User>> login(String email, String password);
 
+  /// Registers a new user account.
+  ///
+  /// Returns [Success<User>] on success,
+  /// or [Failure<User>] with an error message on failure.
+  Future<Result<User>> register(String name, String email, String password);
+
   /// Fetches the currently authenticated user's profile.
   ///
   /// Returns [Success<User>] if a session exists,

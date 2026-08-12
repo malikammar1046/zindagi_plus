@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/data/models/user.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
 
 // ── Color constants (from design system) ──────────────────────────────────────
@@ -24,8 +25,8 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           TextButton.icon(
             onPressed: () => context.push('/profile/edit'),
-            icon: Icon(Icons.edit_outlined, size: 16, color: _kEmerald),
-            label: Text(
+            icon: const Icon(Icons.edit_outlined, size: 16, color: _kEmerald),
+            label: const Text(
               'Edit',
               style: TextStyle(
                 color: _kEmerald,
@@ -43,17 +44,22 @@ class ProfileScreen extends ConsumerWidget {
           // ── Profile Header ────────────────────────────────────────────────
           _ProfileHeader(user: user),
 
-          const SizedBox(height: 28),
+          if (user?.primaryGoal != null || user?.dietType != null) ...[
+            const SizedBox(height: 16),
+            _GoalAndDietCard(user: user!),
+          ],
+
+          const SizedBox(height: 24),
 
           // ── Health section ────────────────────────────────────────────────
-          _SectionLabel(label: 'Health'),
+          const _SectionLabel(label: 'Health'),
           _ListGroup(
             children: [
               _ListRow(
                 icon: Icons.person_outline_rounded,
                 iconColor: _kEmerald,
                 title: 'Health Information',
-                subtitle: 'Age, weight, blood type',
+                subtitle: 'Age, weight, blood type, conditions',
                 onTap: () => context.push('/profile/edit'),
               ),
               _ListRow(
@@ -84,7 +90,7 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 28),
 
           // ── Activity & Nutrition section ──────────────────────────────────
-          _SectionLabel(label: 'Activity & Nutrition'),
+          const _SectionLabel(label: 'Activity & Nutrition'),
           _ListGroup(
             children: [
               _ListRow(
@@ -115,7 +121,7 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 28),
 
           // ── Account section ───────────────────────────────────────────────
-          _SectionLabel(label: 'Account'),
+          const _SectionLabel(label: 'Account'),
           _ListGroup(
             children: [
               _ListRow(
@@ -162,15 +168,25 @@ class ProfileScreen extends ConsumerWidget {
 
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({required this.user});
-  final dynamic user;
+  final User? user;
 
   @override
   Widget build(BuildContext context) {
-    final initials = (user?.name?.isNotEmpty == true)
-        ? (user!.name as String)[0].toUpperCase()
+    final initials = (user?.name.isNotEmpty == true)
+        ? user!.name[0].toUpperCase()
         : 'U';
     final name = user?.name ?? 'User';
     final email = user?.email ?? '';
+
+    final weightStr = user?.weightKg != null
+        ? '${user!.weightKg!.toStringAsFixed(0)} kg'
+        : '72 kg';
+    final heightStr = user?.heightCm != null
+        ? '${user!.heightCm!.toStringAsFixed(0)} cm'
+        : '175 cm';
+    final bloodStr = user?.bloodType ?? 'B+';
+    final ageStr = user?.age != null ? '${user!.age}' : '24';
+    final cityStr = user?.city ?? 'Lahore';
 
     return Container(
       color: Colors.white,
@@ -228,7 +244,7 @@ class _ProfileHeader extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            email,
+            '$email · 📍 $cityStr',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -249,7 +265,7 @@ class _ProfileHeader extends StatelessWidget {
               ),
             ),
             child: const Text(
-              '✨  Premium Member',
+              '✨  Active Health Member',
               style: TextStyle(
                 color: _kEmerald,
                 fontSize: 12,
@@ -260,19 +276,101 @@ class _ProfileHeader extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Compact health stats bar
+          // Dynamic health stats bar
           Row(
             children: [
-              _StatCell(value: '72 kg', label: 'Weight'),
+              _StatCell(value: weightStr, label: 'Weight'),
               _StatDivider(),
-              _StatCell(value: '175 cm', label: 'Height'),
+              _StatCell(value: heightStr, label: 'Height'),
               _StatDivider(),
-              _StatCell(value: 'B+', label: 'Blood Type'),
+              _StatCell(value: bloodStr, label: 'Blood Type'),
               _StatDivider(),
-              _StatCell(value: '24', label: 'Age'),
+              _StatCell(value: ageStr, label: 'Age'),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GoalAndDietCard extends StatelessWidget {
+  const _GoalAndDietCard({required this.user});
+  final User user;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (user.primaryGoal != null) ...[
+              Row(
+                children: [
+                  const Text('🎯', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      user.primaryGoal!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+            ],
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (user.dietType != null)
+                  _TagChip(label: '🥗 ${user.dietType!}'),
+                if (user.activityLevel != null)
+                  _TagChip(label: '🏃 ${user.activityLevel!}'),
+                if (user.fitnessExperience != null)
+                  _TagChip(label: '💪 ${user.fitnessExperience!}'),
+                ...user.conditions.map((c) => _TagChip(label: '🩺 $c')),
+                ...user.allergies.map((a) => _TagChip(label: '⚠️ $a')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TagChip extends StatelessWidget {
+  const _TagChip({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          color: Color(0xFF4B5563),
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -320,13 +418,13 @@ class _StatDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 1,
-      height: 28,
+      height: 32,
       color: const Color(0xFFE5E7EB),
     );
   }
 }
 
-// ── Section label ──────────────────────────────────────────────────────────────
+// ── Reusable List Section Widgets ─────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel({required this.label});
@@ -335,7 +433,7 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 20, bottom: 8),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       child: Text(
         label.toUpperCase(),
         style: const TextStyle(
@@ -349,8 +447,6 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-// ── List group (white card container with internal dividers) ───────────────────
-
 class _ListGroup extends StatelessWidget {
   const _ListGroup({required this.children});
   final List<Widget> children;
@@ -362,25 +458,20 @@ class _ListGroup extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
+            color: Color(0x08000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Column(children: children),
-      ),
+      child: Column(children: children),
     );
   }
 }
 
-// ── List row ───────────────────────────────────────────────────────────────────
-
-class _ListRow extends StatefulWidget {
+class _ListRow extends StatelessWidget {
   const _ListRow({
     required this.icon,
     required this.iconColor,
@@ -388,8 +479,8 @@ class _ListRow extends StatefulWidget {
     this.subtitle,
     this.titleColor,
     this.showChevron = true,
+    this.onTap,
     this.isLast = false,
-    required this.onTap,
   });
 
   final IconData icon;
@@ -398,96 +489,73 @@ class _ListRow extends StatefulWidget {
   final String? subtitle;
   final Color? titleColor;
   final bool showChevron;
+  final VoidCallback? onTap;
   final bool isLast;
-  final VoidCallback onTap;
-
-  @override
-  State<_ListRow> createState() => _ListRowState();
-}
-
-class _ListRowState extends State<_ListRow> {
-  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final iconBg = widget.iconColor.withValues(alpha: 0.12);
-
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        GestureDetector(
-          onTapDown: (_) => setState(() => _pressed = true),
-          onTapUp: (_) {
-            setState(() => _pressed = false);
-            widget.onTap();
-          },
-          onTapCancel: () => setState(() => _pressed = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 100),
-            color: _pressed
-                ? const Color(0xFFF0F4F3)
-                : Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            child: Row(
-              children: [
-                // Icon container
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(10),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 20),
                   ),
-                  child: Icon(widget.icon, size: 18, color: widget.iconColor),
-                ),
-                const SizedBox(width: 14),
-                // Title + optional subtitle
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: widget.titleColor ?? const Color(0xFF181C22),
-                        ),
-                      ),
-                      if (widget.subtitle != null) ...[
-                        const SizedBox(height: 2),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          widget.subtitle!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF9CA3AF),
+                          title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: titleColor ?? const Color(0xFF181C22),
                           ),
                         ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF9CA3AF),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                if (widget.showChevron)
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    size: 20,
-                    color: Color(0xFFD1D5DB),
-                  ),
-              ],
+                  if (showChevron)
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: Color(0xFFD1D5DB),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
-        if (!widget.isLast)
+        if (!isLast)
           const Divider(
             height: 1,
-            thickness: 1,
             indent: 66,
-            endIndent: 0,
+            endIndent: 16,
             color: Color(0xFFF3F4F6),
           ),
       ],

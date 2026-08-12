@@ -8,6 +8,7 @@ import 'package:zindagi_plus/features/chat/screens/chat_screen.dart';
 import 'package:zindagi_plus/features/dashboard/screens/dashboard_screen.dart';
 import 'package:zindagi_plus/features/dashboard/screens/score_breakdown_screen.dart';
 import 'package:zindagi_plus/features/medications/screens/medication_list_screen.dart';
+import 'package:zindagi_plus/features/medications/screens/medication_history_screen.dart';
 import 'package:zindagi_plus/features/profile/screens/profile_edit_screen.dart';
 import 'package:zindagi_plus/features/profile/screens/profile_screen.dart';
 import 'package:zindagi_plus/features/recommendations/screens/activity_screen.dart';
@@ -15,6 +16,7 @@ import 'package:zindagi_plus/features/recommendations/screens/meal_detail_screen
 import 'package:zindagi_plus/features/recommendations/screens/meal_screen.dart';
 import 'package:zindagi_plus/features/recommendations/screens/recommendation_detail_screen.dart';
 import 'package:zindagi_plus/features/reports/screens/report_detail_screen.dart';
+import 'package:zindagi_plus/features/reports/screens/report_history_screen.dart';
 import 'package:zindagi_plus/features/reports/screens/report_processing_screen.dart';
 import 'package:zindagi_plus/features/reports/screens/upload_screen.dart';
 import 'package:zindagi_plus/features/settings/screens/settings_screen.dart';
@@ -28,6 +30,7 @@ import 'package:zindagi_plus/shared/widgets/app_shell.dart';
 
 import 'package:zindagi_plus/features/onboarding/screens/splash_screen.dart';
 import 'package:zindagi_plus/features/onboarding/screens/onboarding_screen.dart';
+import 'package:zindagi_plus/features/onboarding/screens/onboarding_setup_screen.dart';
 import 'package:zindagi_plus/features/auth/screens/email_verification_screen.dart';
 import 'package:zindagi_plus/features/auth/screens/forgot_password_screen.dart';
 import 'package:zindagi_plus/features/auth/screens/reset_password_screen.dart';
@@ -49,21 +52,44 @@ class _RouterNotifier extends ChangeNotifier {
 
   /// Called by GoRouter on every navigation event.
   ///
-  /// - Not authenticated + navigating to a protected route → `/login`
-  /// - Authenticated + navigating to an auth route → `/dashboard`
+  /// - Not authenticated + navigating to a protected route → `/splash`
+  /// - Authenticated + onboarding NOT completed → `/onboarding/setup`
+  /// - Authenticated + onboarding completed + navigating to auth routes → `/dashboard`
   String? redirect(BuildContext context, GoRouterState routerState) {
-    final isLoggedIn = _ref.read(authNotifierProvider) != null;
+    final user = _ref.read(authNotifierProvider);
+    final isLoggedIn = user != null;
     final loc = routerState.matchedLocation;
-    final isAuthRoute = loc == '/login' || 
-                        loc == '/register' || 
-                        loc == '/splash' || 
-                        loc == '/onboarding' ||
-                        loc == '/email-verification' ||
-                        loc == '/forgot-password' ||
-                        loc == '/reset-password';
+    final isAuthRoute = loc == '/login' ||
+        loc == '/register' ||
+        loc == '/splash' ||
+        loc == '/onboarding' ||
+        loc == '/email-verification' ||
+        loc == '/forgot-password' ||
+        loc == '/reset-password';
 
-    if (!isLoggedIn && !isAuthRoute) return '/splash';
-    if (isLoggedIn && (loc == '/login' || loc == '/register' || loc == '/splash' || loc == '/onboarding')) return '/dashboard';
+    if (!isLoggedIn && !isAuthRoute) {
+      return '/splash';
+    }
+
+    if (isLoggedIn) {
+      // 1. If user is authenticated but has not finished questionnaire setup
+      if (!user.isOnboardingCompleted) {
+        if (loc != '/onboarding/setup' && loc != '/email-verification') {
+          return '/onboarding/setup';
+        }
+        return null;
+      }
+
+      // 2. If user is fully onboarded and tries to access auth / setup screens
+      if (loc == '/login' ||
+          loc == '/register' ||
+          loc == '/splash' ||
+          loc == '/onboarding' ||
+          loc == '/onboarding/setup' ||
+          loc == '/email-verification') {
+        return '/dashboard';
+      }
+    }
     return null;
   }
 }
@@ -72,7 +98,8 @@ class _RouterNotifier extends ChangeNotifier {
 ///
 /// Shell tabs: Home · Upload · Meals · Chat · Profile
 /// Push routes (no shell): /score-breakdown, /activities, /medications,
-///                         /timeline, /recommendation/:id
+///                         /timeline, /recommendation/:id, /medication-history,
+///                         /report-history, /onboarding/setup
 final goRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterNotifier(ref);
 
@@ -90,6 +117,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (_, _) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/setup',
+        builder: (_, _) => const OnboardingSetupScreen(),
       ),
       GoRoute(
         path: '/email-verification',
@@ -130,12 +161,20 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const MedicationListScreen(),
       ),
       GoRoute(
+        path: '/medication-history',
+        builder: (_, _) => const MedicationHistoryScreen(),
+      ),
+      GoRoute(
         path: '/add-medication',
         builder: (_, _) => const AddMedicationScreen(),
       ),
       GoRoute(
         path: '/medication-reminder',
         builder: (_, _) => const MedicationReminderScreen(),
+      ),
+      GoRoute(
+        path: '/report-history',
+        builder: (_, _) => const ReportHistoryScreen(),
       ),
       GoRoute(
         path: '/nearby-facilities',
@@ -175,15 +214,48 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'processing',
-                    builder: (_, state) => ReportProcessingScreen(
-                      fileName: state.extra is String
-                          ? state.extra as String
-                          : 'lab_report.jpg',
-                    ),
+                    builder: (_, state) {
+                      String fileName = 'lab_report.jpg';
+                      String? reportId;
+                      MockProcessingScenario scenario =
+                          MockProcessingScenario.success;
+
+                      if (state.extra is String) {
+                        fileName = state.extra as String;
+                      } else if (state.extra is Map<String, dynamic>) {
+                        final map = state.extra as Map<String, dynamic>;
+                        fileName =
+                            map['fileName'] as String? ?? fileName;
+                        reportId = map['reportId'] as String?;
+                        scenario = map['scenario']
+                                as MockProcessingScenario? ??
+                            scenario;
+                      }
+
+                      return ReportProcessingScreen(
+                        fileName: fileName,
+                        reportId: reportId,
+                        scenario: scenario,
+                      );
+                    },
                   ),
                   GoRoute(
                     path: 'result',
-                    builder: (_, _) => const ReportDetailScreen(),
+                    builder: (_, state) {
+                      String? reportId;
+                      String? fileName;
+                      if (state.extra is Map<String, dynamic>) {
+                        final map = state.extra as Map<String, dynamic>;
+                        reportId = map['reportId'] as String?;
+                        fileName = map['fileName'] as String?;
+                      } else if (state.extra is String) {
+                        fileName = state.extra as String;
+                      }
+                      return ReportDetailScreen(
+                        reportId: reportId,
+                        fileName: fileName,
+                      );
+                    },
                   ),
                   GoRoute(
                     path: 'explanation',
@@ -244,7 +316,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'notifications',
-                    builder: (_, _) => const NotificationPreferencesScreen(),
+                    builder: (_, _) =>
+                        const NotificationPreferencesScreen(),
                   ),
                   GoRoute(
                     path: 'account',

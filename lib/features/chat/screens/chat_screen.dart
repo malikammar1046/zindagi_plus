@@ -1,32 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// ── Mock data ──────────────────────────────────────────────────────────────────
-
-final _mockMessages = [
-  _Msg(
-    id: '1',
-    isUser: false,
-    text:
-        'Hi! I\'m your Zindagi AI assistant. I can answer questions about your lab results, medications, and health trends. What would you like to know?',
-    time: '9:00 AM',
-    sources: [],
-  ),
-  _Msg(
-    id: '2',
-    isUser: true,
-    text: 'Why is my HbA1c borderline?',
-    time: '9:01 AM',
-    sources: [],
-  ),
-  _Msg(
-    id: '3',
-    isUser: false,
-    text:
-        'Your HbA1c of 6.8% is slightly above the normal range of <5.7%. This reflects your average blood sugar over the past 3 months. The main contributing factors in your profile are irregular meal timing and low fibre intake.',
-    time: '9:01 AM',
-    sources: ['July Lab Report', 'Meal Log Analysis'],
-  ),
-];
+import 'package:zindagi_plus/core/network/result.dart';
+import 'package:zindagi_plus/data/models/chat_message.dart';
+import 'package:zindagi_plus/providers/repository_providers.dart';
 
 const _quickChips = [
   '📊  Explain my blood report',
@@ -35,21 +11,6 @@ const _quickChips = [
   '📈  My health trend this month',
   '💧  Daily water target for me',
 ];
-
-class _Msg {
-  const _Msg({
-    required this.id,
-    required this.isUser,
-    required this.text,
-    required this.time,
-    required this.sources,
-  });
-  final String id, text, time;
-  final bool isUser;
-  final List<String> sources;
-}
-
-// ── Screen ─────────────────────────────────────────────────────────────────────
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -62,8 +23,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     with TickerProviderStateMixin {
   final _textCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
-  late final List<_Msg> _messages = List.from(_mockMessages);
+  final List<ChatMessage> _messages = [];
   bool _isTyping = false;
+  bool _isLoadingHistory = true;
   late final AnimationController _dotCtrl;
 
   @override
@@ -73,6 +35,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final result = await ref.read(chatRepositoryProvider).getChatHistory();
+    if (!mounted) return;
+    switch (result) {
+      case Success(data: final history):
+        setState(() {
+          _messages.clear();
+          _messages.addAll(history);
+          _isLoadingHistory = false;
+        });
+        _scrollToBottom();
+      case Failure():
+        setState(() => _isLoadingHistory = false);
+    }
   }
 
   @override
@@ -85,11 +64,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
-    final userMsg = _Msg(
+    final userMsg = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       isUser: true,
       text: text.trim(),
-      time: _timeNow(),
+      timestamp: DateTime.now(),
       sources: [],
     );
     setState(() {
@@ -99,31 +78,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     _textCtrl.clear();
     _scrollToBottom();
 
-    // Simulated AI response delay (~1.5 s)
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // Call chat repository
+    final result = await ref
+        .read(chatRepositoryProvider)
+        .sendMessage(_messages, text.trim());
     if (!mounted) return;
 
-    final aiMsg = _Msg(
-      id: '${DateTime.now().millisecondsSinceEpoch}ai',
-      isUser: false,
-      text:
-          'Great question! Based on your recent health data and lab results, here\'s what I found: ${text.contains('?') ? 'This is something we can address with small lifestyle changes. I\'ll analyse your full profile to give you a personalised recommendation.' : 'Let me check your health records for a tailored answer.'}',
-      time: _timeNow(),
-      sources: ['Health Profile', 'AI Analysis'],
-    );
     setState(() {
       _isTyping = false;
-      _messages.add(aiMsg);
+      switch (result) {
+        case Success(data: final reply):
+          final aiMsg = ChatMessage(
+            id: '${DateTime.now().millisecondsSinceEpoch}ai',
+            isUser: false,
+            text: reply,
+            timestamp: DateTime.now(),
+            sources: const ['Health Profile', 'AI Analysis'],
+          );
+          _messages.add(aiMsg);
+        case Failure(message: final err):
+          final errMsg = ChatMessage(
+            id: '${DateTime.now().millisecondsSinceEpoch}err',
+            isUser: false,
+            text: 'Sorry, I encountered an issue: $err. Please try again.',
+            timestamp: DateTime.now(),
+            sources: const [],
+          );
+          _messages.add(errMsg);
+      }
     });
     _scrollToBottom();
-  }
-
-  String _timeNow() {
-    final now = DateTime.now();
-    final h = now.hour > 12 ? now.hour - 12 : now.hour;
-    final m = now.minute.toString().padLeft(2, '0');
-    final period = now.hour >= 12 ? 'PM' : 'AM';
-    return '$h:$m $period';
   }
 
   void _scrollToBottom() {
@@ -142,7 +126,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -219,55 +203,58 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         ],
       ),
       resizeToAvoidBottomInset: true,
-      body: Column(
-        children: [
-          // ── Quick chips ──────────────────────────────────────────────────
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              itemCount: _quickChips.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => _ChipButton(
-                label: _quickChips[i],
-                onTap: () => _sendMessage(_quickChips[i]),
-              ),
-            ),
-          ),
-          
-          const Divider(height: 1),
+      body: _isLoadingHistory
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // ── Quick chips ───────────────────────────────────────────
+                SizedBox(
+                  height: 44,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
+                    itemCount: _quickChips.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) => _ChipButton(
+                      label: _quickChips[i],
+                      onTap: () => _sendMessage(_quickChips[i]),
+                    ),
+                  ),
+                ),
 
-          // ── Message list ─────────────────────────────────────────────────
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollCtrl,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              itemCount: _messages.length + (_isTyping ? 1 : 0),
-              itemBuilder: (_, i) {
-                if (_isTyping && i == _messages.length) {
-                  return _TypingIndicator(dotCtrl: _dotCtrl);
-                }
-                return _MessageBubble(
-                  msg: _messages[i],
-                  isNew: i == _messages.length - 1,
-                );
-              },
-            ),
-          ),
+                const Divider(height: 1),
 
-          // ── Input bar ────────────────────────────────────────────────────
-          _InputBar(
-            controller: _textCtrl,
-            onSend: _sendMessage,
-          ),
-        ],
-      ),
+                // ── Message list ──────────────────────────────────────────
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollCtrl,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    itemCount: _messages.length + (_isTyping ? 1 : 0),
+                    itemBuilder: (_, i) {
+                      if (_isTyping && i == _messages.length) {
+                        return _TypingIndicator(dotCtrl: _dotCtrl);
+                      }
+                      return _MessageBubble(
+                        msg: _messages[i],
+                        isNew: i == _messages.length - 1,
+                      );
+                    },
+                  ),
+                ),
+
+                // ── Input bar ─────────────────────────────────────────────
+                _InputBar(
+                  controller: _textCtrl,
+                  onSend: _sendMessage,
+                ),
+              ],
+            ),
     );
   }
 }
 
-// ── Quick chip button (Apple §1: respond on pointer-down) ──────────────────────
+// ── Quick chip button ───────────────────────────────────────────────────────────
 
 class _ChipButton extends StatefulWidget {
   const _ChipButton({required this.label, required this.onTap});
@@ -284,7 +271,7 @@ class _ChipButtonState extends State<_ChipButton> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -320,7 +307,7 @@ class _ChipButtonState extends State<_ChipButton> {
 
 class _MessageBubble extends StatefulWidget {
   const _MessageBubble({required this.msg, required this.isNew});
-  final _Msg msg;
+  final ChatMessage msg;
   final bool isNew;
 
   @override
@@ -339,7 +326,6 @@ class _MessageBubbleState extends State<_MessageBubble>
       duration: const Duration(milliseconds: 380),
     );
     if (widget.isNew) {
-      // Apple §7: bubble enters from the bottom (its natural origin)
       _ctrl.forward();
     } else {
       _ctrl.value = 1.0;
@@ -355,7 +341,7 @@ class _MessageBubbleState extends State<_MessageBubble>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (_, child) {
@@ -386,7 +372,8 @@ class _MessageBubbleState extends State<_MessageBubble>
               decoration: BoxDecoration(
                 color: widget.msg.isUser
                     ? colorScheme.primary
-                    : colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    : colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.4),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
@@ -437,7 +424,7 @@ class _MessageBubbleState extends State<_MessageBubble>
                   ),
                 ],
                 Text(
-                  widget.msg.time,
+                  widget.msg.timeFormatted,
                   style: TextStyle(
                     fontSize: 11,
                     color: colorScheme.onSurface.withValues(alpha: 0.5),
@@ -461,7 +448,7 @@ class _TypingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -493,7 +480,8 @@ class _TypingIndicator extends StatelessWidget {
                     width: 7,
                     height: 7,
                     decoration: BoxDecoration(
-                      color: colorScheme.onSurface.withValues(alpha: 0.3 + v * 0.5),
+                      color:
+                          colorScheme.onSurface.withValues(alpha: 0.3 + v * 0.5),
                       shape: BoxShape.circle,
                     ),
                   );
@@ -539,7 +527,7 @@ class _InputBarState extends State<_InputBar> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Container(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -587,7 +575,6 @@ class _InputBarState extends State<_InputBar> {
             ),
           ),
           const SizedBox(width: 10),
-          // Send button — Apple §1: respond on pointer-down
           GestureDetector(
             onTapDown: (_) => setState(() => _pressed = true),
             onTapUp: (_) {
@@ -604,7 +591,10 @@ class _InputBarState extends State<_InputBar> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _hasText ? colorScheme.primary : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  color: _hasText
+                      ? colorScheme.primary
+                      : colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
