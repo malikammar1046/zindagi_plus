@@ -121,6 +121,73 @@ class User {
     );
   }
 
+  /// Creates a [User] from Supabase `public.profiles`, `public.user_goals`,
+  /// `public.user_conditions`, and `public.user_allergies` records.
+  factory User.fromProfile(
+    Map<String, dynamic> map, {
+    String? email,
+    Map<String, dynamic>? goals,
+    List<String>? conditions,
+    List<String>? allergies,
+  }) {
+    DateTime? dob;
+    if (map['date_of_birth'] != null) {
+      dob = DateTime.tryParse(map['date_of_birth'].toString());
+    }
+
+    int? calculatedAge;
+    if (dob != null) {
+      final now = DateTime.now();
+      calculatedAge = now.year - dob.year;
+      if (now.month < dob.month ||
+          (now.month == dob.month && now.day < dob.day)) {
+        calculatedAge--;
+      }
+      if (calculatedAge < 0) calculatedAge = null;
+    }
+
+    return User(
+      id: (map['id'] as String?) ?? '',
+      name: (map['full_name'] as String?) ?? '',
+      email: email ?? '',
+      isOnboardingCompleted:
+          map['is_onboarding_completed'] as bool? ?? false,
+      age: calculatedAge,
+      dateOfBirth: dob,
+      weightKg: map['weight_kg'] != null
+          ? (map['weight_kg'] as num).toDouble()
+          : null,
+      heightCm: map['height_cm'] != null
+          ? (map['height_cm'] as num).toDouble()
+          : null,
+      bloodType: map['blood_type'] as String?,
+      gender: map['gender'] as String?,
+      city: map['city'] as String?,
+      phone: map['phone'] as String?,
+      photoUrl: map['avatar_url'] as String?,
+      conditions: conditions ?? const [],
+      allergies: allergies ?? const [],
+      primaryGoal: goals?['primary_goal'] as String?,
+      secondaryGoals: (goals?['secondary_goals'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      activityLevel: goals?['activity_level'] as String?,
+      fitnessExperience: goals?['fitness_experience'] as String?,
+      workoutTimePerDay: goals?['workout_time_per_day'] as String?,
+      equipment: goals?['equipment'] as String?,
+      dietType: goals?['diet_type'] as String?,
+      foodPreferences: (goals?['food_preferences'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      foodsToAvoid: (goals?['foods_to_avoid'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+    );
+  }
+
   /// Creates a [User] from a JSON map.
   factory User.fromJson(Map<String, dynamic> json) {
     return User(

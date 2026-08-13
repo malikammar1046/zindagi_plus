@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthState, OtpType;
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/user.dart';
 import 'package:zindagi_plus/data/repositories/interfaces/auth_repository.dart';
@@ -9,26 +11,29 @@ import 'package:zindagi_plus/data/repositories/interfaces/auth_repository.dart';
 ///
 /// Valid credentials: email=`test@test.com` / password=`password`
 class AuthRepositoryMock implements AuthRepository {
+  AuthRepositoryMock([this._currentUser]);
+
   // Simulated "session" — set after a successful login or register.
   User? _currentUser;
+  final _authStateController = StreamController<AuthState>.broadcast();
+
+  @override
+  Stream<AuthState>? get authStateChanges => _authStateController.stream;
 
   @override
   Future<Result<User>> login(String email, String password) async {
-    // Simulate a network round-trip.
-    await Future.delayed(const Duration(seconds: 1));
-
     if (email == 'test@test.com' && password == 'password') {
-      _currentUser = User(
+      _currentUser = const User(
         id: '1',
         name: 'Ammar',
-        email: email,
+        email: 'test@test.com',
         isOnboardingCompleted: true,
         age: 24,
         weightKg: 72,
         heightCm: 175,
         bloodType: 'B+',
-        conditions: const ['Pre-diabetes', 'Vitamin D Deficiency'],
-        allergies: const ['Peanuts'],
+        conditions: ['Pre-diabetes', 'Vitamin D Deficiency'],
+        allergies: ['Peanuts'],
         primaryGoal: 'Improve blood sugar & fitness',
         activityLevel: 'Lightly active',
         fitnessExperience: 'Intermediate',
@@ -41,15 +46,12 @@ class AuthRepositoryMock implements AuthRepository {
       return Success(_currentUser!);
     }
 
-    return Failure('Invalid credentials');
+    return const Failure('Invalid credentials');
   }
 
   @override
   Future<Result<User>> register(
       String name, String email, String password) async {
-    // Simulate a network round-trip.
-    await Future.delayed(const Duration(seconds: 1));
-
     _currentUser = User(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
@@ -61,31 +63,51 @@ class AuthRepositoryMock implements AuthRepository {
 
   @override
   Future<Result<User>> getCurrentUser() async {
-    // Simulate a shorter cached-response latency.
-    await Future.delayed(const Duration(milliseconds: 500));
+    if (_currentUser != null) {
+      return Success(_currentUser!);
+    }
+    return const Failure('No active session');
+  }
 
-    // Return the in-memory session if login was called, otherwise a default.
-    final user = _currentUser ??
-        const User(
-          id: '1',
-          name: 'Ammar',
-          email: 'test@test.com',
-          isOnboardingCompleted: true,
-          age: 24,
-          weightKg: 72,
-          heightCm: 175,
-          bloodType: 'B+',
-          conditions: ['Pre-diabetes', 'Vitamin D Deficiency'],
-          allergies: ['Peanuts'],
-          primaryGoal: 'Improve blood sugar & fitness',
-          activityLevel: 'Lightly active',
-          fitnessExperience: 'Intermediate',
-          workoutTimePerDay: '30 minutes',
-          equipment: 'Basic home equipment',
-          dietType: 'High Protein / Low Carb',
-          gender: 'Male',
-          city: 'Lahore',
-        );
-    return Success(user);
+  @override
+  Future<Result<void>> logout() async {
+    _currentUser = null;
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> resetPasswordForEmail(String email) async {
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> updatePassword(String newPassword) async {
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> resendVerificationEmail(String email) async {
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<User>> verifyOtp({
+    required String email,
+    required String token,
+    OtpType type = OtpType.signup,
+  }) async {
+    _currentUser = User(
+      id: '1',
+      name: 'Ammar',
+      email: email,
+      isOnboardingCompleted: false,
+    );
+    return Success(_currentUser!);
+  }
+
+  @override
+  Future<Result<User>> completeOnboarding(User user) async {
+    _currentUser = user.copyWith(isOnboardingCompleted: true);
+    return Success(_currentUser!);
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -23,9 +24,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       duration: const Duration(milliseconds: 1000),
     )..forward();
 
-    // Auto-navigate after 2 seconds
+    // Auto-navigate after visual splash delay based on real session state
     _timer = Timer(const Duration(seconds: 2), () {
-      if (mounted) {
+      if (!mounted) return;
+      final user = ref.read(authNotifierProvider);
+      if (user != null) {
+        if (user.isOnboardingCompleted) {
+          context.go('/dashboard');
+        } else {
+          context.go('/onboarding/setup');
+        }
+      } else {
         context.go('/onboarding');
       }
     });

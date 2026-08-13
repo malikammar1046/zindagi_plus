@@ -28,9 +28,10 @@ const _allAllergies = [
   'Penicillin',
 ];
 
-const _bloodTypes = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−', 'Unknown'];
+const _bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
 
 const _goalsList = [
+  'Improve overall health',
   'Improve blood sugar & metabolic health',
   'Lose weight sustainably',
   'Gain lean muscle & strength',
@@ -44,7 +45,7 @@ const _dietStyles = [
   'Vegetarian',
   'Vegan',
   'Halal',
-  'Low Glycemic Index'
+  'Low Glycemic Index',
 ];
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
   late final TextEditingController _heightCtrl;
   late final TextEditingController _cityCtrl;
   String _bloodType = 'B+';
-  String _primaryGoal = 'Improve blood sugar & metabolic health';
+  String _primaryGoal = 'Improve overall health';
   String _dietType = 'High Protein / Low Carb';
   final Set<String> _conditions = {};
   final Set<String> _allergies = {};
@@ -84,9 +85,24 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
     _heightCtrl = TextEditingController(
         text: user?.heightCm != null ? user!.heightCm!.toStringAsFixed(0) : '175');
     _cityCtrl = TextEditingController(text: user?.city ?? 'Lahore');
-    _bloodType = user?.bloodType ?? 'B+';
-    _primaryGoal = user?.primaryGoal ?? _goalsList.first;
-    _dietType = user?.dietType ?? _dietStyles.first;
+
+    final rawBlood = user?.bloodType?.replaceAll('−', '-').trim();
+    _bloodType = _bloodTypes.firstWhere(
+      (b) => b == rawBlood,
+      orElse: () => _bloodTypes.first,
+    );
+
+    final rawGoal = user?.primaryGoal?.trim();
+    _primaryGoal = _goalsList.firstWhere(
+      (g) => g.toLowerCase() == rawGoal?.toLowerCase(),
+      orElse: () => _goalsList.first,
+    );
+
+    final rawDiet = user?.dietType?.trim();
+    _dietType = _dietStyles.firstWhere(
+      (d) => d.toLowerCase() == rawDiet?.toLowerCase(),
+      orElse: () => _dietStyles.first,
+    );
 
     if (user?.conditions.isNotEmpty == true) {
       _conditions.addAll(user!.conditions);
@@ -336,7 +352,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
               const SizedBox(height: 14),
               // Blood type picker
               DropdownButtonFormField<String>(
-                initialValue: _bloodType,
+                initialValue: _bloodTypes.contains(_bloodType)
+                    ? _bloodType
+                    : _bloodTypes.first,
                 decoration: const InputDecoration(
                   labelText: 'Blood Group',
                   prefixIcon: Icon(Icons.bloodtype_outlined),
@@ -358,7 +376,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
               const SectionHeader(title: 'Goals & Nutrition'),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _primaryGoal,
+                initialValue: _goalsList.contains(_primaryGoal)
+                    ? _primaryGoal
+                    : _goalsList.first,
                 isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Primary Health Goal',
@@ -377,7 +397,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
-                initialValue: _dietType,
+                initialValue: _dietStyles.contains(_dietType)
+                    ? _dietType
+                    : _dietStyles.first,
                 isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Diet Style',

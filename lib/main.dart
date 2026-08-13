@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:zindagi_plus/core/config/environment.dart';
 import 'package:zindagi_plus/core/theme/app_theme.dart';
 import 'package:zindagi_plus/routes/app_router.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (Environment.isSupabaseConfigured) {
+    await Supabase.initialize(
+      url: Environment.supabaseUrl,
+      publishableKey: Environment.supabasePublishableKey,
+    );
+  }
+
   runApp(
     const ProviderScope(child: ZindagiApp()),
   );

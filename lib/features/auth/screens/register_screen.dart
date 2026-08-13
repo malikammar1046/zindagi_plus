@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/core/config/environment.dart';
 import 'package:zindagi_plus/core/network/result.dart';
+import 'package:zindagi_plus/core/network/supabase_service.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
 import 'package:zindagi_plus/providers/repository_providers.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
@@ -40,9 +42,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _errorMessage = null;
     });
 
+    final email = _emailCtrl.text.trim();
     final result = await ref.read(authRepositoryProvider).register(
           _nameCtrl.text.trim(),
-          _emailCtrl.text.trim(),
+          email,
           _passwordCtrl.text,
         );
 
@@ -51,7 +54,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     switch (result) {
       case Success(data: final user):
-        ref.read(authNotifierProvider.notifier).setUser(user);
+        final hasActiveSession = !Environment.isSupabaseConfigured ||
+            (SupabaseService.authOrNull?.currentSession != null);
+        if (hasActiveSession) {
+          ref.read(authNotifierProvider.notifier).setUser(user);
+        } else {
+          context.push('/email-verification', extra: email);
+        }
       case Failure(message: final msg):
         setState(() => _errorMessage = msg);
     }

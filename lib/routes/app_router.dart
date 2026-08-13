@@ -68,13 +68,18 @@ class _RouterNotifier extends ChangeNotifier {
         loc == '/reset-password';
 
     if (!isLoggedIn && !isAuthRoute) {
-      return '/splash';
+      return '/login';
     }
 
     if (isLoggedIn) {
+      // Allow user to stay on /reset-password if navigating there (e.g. password recovery flow)
+      if (loc == '/reset-password') {
+        return null;
+      }
+
       // 1. If user is authenticated but has not finished questionnaire setup
       if (!user.isOnboardingCompleted) {
-        if (loc != '/onboarding/setup' && loc != '/email-verification') {
+        if (loc != '/onboarding/setup') {
           return '/onboarding/setup';
         }
         return null;
@@ -86,7 +91,8 @@ class _RouterNotifier extends ChangeNotifier {
           loc == '/splash' ||
           loc == '/onboarding' ||
           loc == '/onboarding/setup' ||
-          loc == '/email-verification') {
+          loc == '/email-verification' ||
+          loc == '/forgot-password') {
         return '/dashboard';
       }
     }
@@ -124,7 +130,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/email-verification',
-        builder: (_, _) => const EmailVerificationScreen(),
+        builder: (_, state) => EmailVerificationScreen(
+          email: state.extra is String ? state.extra as String : null,
+        ),
       ),
       GoRoute(
         path: '/forgot-password',

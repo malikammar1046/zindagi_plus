@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
 import 'package:zindagi_plus/providers/onboarding_provider.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
@@ -18,6 +19,7 @@ class _OnboardingSetupScreenState extends ConsumerState<OnboardingSetupScreen> {
   late final TextEditingController _heightCtrl;
   late final TextEditingController _weightCtrl;
   late final TextEditingController _ageCtrl;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -42,6 +44,7 @@ class _OnboardingSetupScreenState extends ConsumerState<OnboardingSetupScreen> {
   }
 
   void _onNext() {
+    if (_isSaving) return;
     final obState = ref.read(onboardingProvider);
     final notifier = ref.read(onboardingProvider.notifier);
 
@@ -80,14 +83,31 @@ class _OnboardingSetupScreenState extends ConsumerState<OnboardingSetupScreen> {
     }
   }
 
-  void _finishOnboarding() {
+  Future<void> _finishOnboarding() async {
     final currentUser = ref.read(authNotifierProvider);
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      _showToast('Session error. Please sign in again.');
+      return;
+    }
+
+    setState(() => _isSaving = true);
 
     final updatedUser =
         ref.read(onboardingProvider.notifier).buildUser(currentUser);
-    ref.read(authNotifierProvider.notifier).completeOnboarding(updatedUser);
-    context.go('/dashboard');
+
+    final result = await ref
+        .read(authNotifierProvider.notifier)
+        .completeOnboarding(updatedUser);
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    switch (result) {
+      case Success():
+        context.go('/dashboard');
+      case Failure(message: final msg):
+        _showToast('Failed to save onboarding: $msg');
+    }
   }
 
   void _showToast(String msg) {
@@ -185,7 +205,8 @@ class _OnboardingSetupScreenState extends ConsumerState<OnboardingSetupScreen> {
                 icon: obState.currentStep == OnboardingState.totalSteps - 1
                     ? Icons.rocket_launch_rounded
                     : Icons.arrow_forward_rounded,
-                onPressed: _onNext,
+                isLoading: _isSaving,
+                onPressed: _isSaving ? null : _onNext,
               ),
             ),
           ],
@@ -418,7 +439,7 @@ class _Step3BodyMetrics extends StatelessWidget {
   final ValueChanged<String> onBloodTypeSelected;
 
   static const _bloodTypes = [
-    'A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−', 'Unknown'
+    'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'
   ];
 
   @override
@@ -633,6 +654,11 @@ class _Step5Goals extends StatelessWidget {
   final ValueChanged<String> onActivityLevelSelected;
 
   static const _goals = [
+    (
+      'Improve overall health',
+      '🌟',
+      'Holistic wellness, vitality, and immunity'
+    ),
     (
       'Improve blood sugar & metabolic health',
       '🩸',

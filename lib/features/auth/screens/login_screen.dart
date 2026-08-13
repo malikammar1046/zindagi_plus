@@ -173,6 +173,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       v == null || v.length < 6 ? 'Min. 6 characters' : null,
                 ),
 
+                const SizedBox(height: 8),
+
+                // ── Forgot Password Link ────────────────────────────────────
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => context.push('/forgot-password'),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: colorScheme.primary,
+                    ),
+                    child: const Text(
+                      'Forgot Password?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+
                 // ── Error banner ───────────────────────────────────────────
                 if (_errorMessage != null) ...[
                   const SizedBox(height: 16),
@@ -181,16 +204,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     decoration: BoxDecoration(
                       color: colorScheme.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colorScheme.error.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: colorScheme.error.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline, color: colorScheme.error, size: 20),
+                        Icon(Icons.error_outline,
+                            color: colorScheme.error, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: TextStyle(color: colorScheme.error, fontSize: 13),
+                            style: TextStyle(
+                                color: colorScheme.error, fontSize: 13),
                           ),
                         ),
                       ],
@@ -198,7 +224,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ],
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
 
                 // ── Login button ───────────────────────────────────────────
                 PrimaryButton(
@@ -206,26 +232,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: _isLoading ? null : _login,
                   isLoading: _isLoading,
                   icon: Icons.arrow_forward_rounded,
-                ),
-
-                const SizedBox(height: 16),
-
-                // ── Demo hint ──────────────────────────────────────────────
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '💡  Demo credentials: test@test.com / password',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12, 
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
                 ),
 
                 const SizedBox(height: 24),

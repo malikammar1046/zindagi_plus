@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthState, OtpType;
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/user.dart';
 
@@ -23,4 +24,29 @@ abstract class AuthRepository {
   /// Returns [Success<User>] if a session exists,
   /// or [Failure<User>] if the user is not authenticated.
   Future<Result<User>> getCurrentUser();
+
+  /// Signs out the currently authenticated user session.
+  Future<Result<void>> logout();
+
+  /// Sends a password recovery email to [email].
+  Future<Result<void>> resetPasswordForEmail(String email);
+
+  /// Updates the password for the current user.
+  Future<Result<void>> updatePassword(String newPassword);
+
+  /// Resends a signup verification code/email to [email].
+  Future<Result<void>> resendVerificationEmail(String email);
+
+  /// Verifies an OTP code for signup or recovery.
+  Future<Result<User>> verifyOtp({
+    required String email,
+    required String token,
+    OtpType type = OtpType.signup,
+  });
+
+  /// Persists onboarding questionnaire answers and marks onboarding completed.
+  Future<Result<User>> completeOnboarding(User user);
+
+  /// Stream of Supabase auth state change events.
+  Stream<AuthState>? get authStateChanges;
 }
