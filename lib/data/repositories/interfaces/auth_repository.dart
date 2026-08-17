@@ -47,6 +47,14 @@ abstract class AuthRepository {
   /// Persists onboarding questionnaire answers and marks onboarding completed.
   Future<Result<User>> completeOnboarding(User user);
 
+  /// Persists profile edits (demographics, body metrics, goals, conditions,
+  /// allergies) for the authenticated user.
+  ///
+  /// Writes to `public.profiles`, `public.user_goals`, `public.user_conditions`,
+  /// and `public.user_allergies`. Does NOT change `is_onboarding_completed`.
+  /// Returns the refreshed [User] on success.
+  Future<Result<User>> updateProfile(User user);
+
   /// Stream of Supabase auth state change events.
   Stream<AuthState>? get authStateChanges;
 }

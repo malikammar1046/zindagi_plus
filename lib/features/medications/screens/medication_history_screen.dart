@@ -136,6 +136,16 @@ class _LogTile extends StatelessWidget {
     final period = log.loggedAt.hour >= 12 ? 'PM' : 'AM';
     final timeStr = '$h:$m $period';
 
+    final displaySubtitle = log.scheduledTime != null && log.scheduledTime!.isNotEmpty
+        ? '${log.dose} • Sched: ${log.scheduledTime!.split('—').first.trim()}'
+        : log.dose;
+
+    final statusSubtitle = switch (log.status) {
+      MedStatus.taken => 'Taken $timeStr',
+      MedStatus.missed => 'Missed $timeStr',
+      MedStatus.pending => 'Scheduled $timeStr',
+    };
+
     return AppCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
@@ -150,6 +160,7 @@ class _LogTile extends StatelessWidget {
             child: Icon(icon, color: color, size: 22),
           ),
           const SizedBox(width: 14),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,7 +175,7 @@ class _LogTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  log.dose,
+                  displaySubtitle,
                   style: TextStyle(
                     fontSize: 12,
                     color: colorScheme.onSurface.withValues(alpha: 0.6),
@@ -194,7 +205,7 @@ class _LogTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                timeStr,
+                statusSubtitle,
                 style: TextStyle(
                   fontSize: 11,
                   color: colorScheme.onSurface.withValues(alpha: 0.5),
@@ -207,3 +218,4 @@ class _LogTile extends StatelessWidget {
     );
   }
 }
+

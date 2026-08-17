@@ -330,6 +330,143 @@ class AuthRepositorySupabase implements AuthRepository {
     return Success(completedUser);
   }
 
+  @override
+  Future<Result<User>> updateProfile(User user) async {
+    final authUser = _client.auth.currentUser;
+    final userId = authUser?.id ?? user.id;
+
+    debugPrint('[AuthRepositorySupabase.updateProfile] START userId=$userId');
+
+    if (userId.isEmpty) {
+      return const Failure('No active session. Please log in again.');
+    }
+
+    // Derive date_of_birth from age if dateOfBirth not set directly.
+    DateTime? calculatedDob = user.dateOfBirth;
+    if (calculatedDob == null && user.age != null && user.age! > 0) {
+      calculatedDob = DateTime(DateTime.now().year - user.age!, 1, 1);
+    }
+    final dobString = calculatedDob != null
+        ? '${calculatedDob.year.toString().padLeft(4, '0')}-${calculatedDob.month.toString().padLeft(2, '0')}-${calculatedDob.day.toString().padLeft(2, '0')}'
+        : null;
+
+    // Normalise blood type to ASCII minus sign.
+    String? bloodType = user.bloodType?.replaceAll('−', '-').trim();
+    const validBloodTypes = {
+      'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown',
+    };
+    if (bloodType != null && !validBloodTypes.contains(bloodType)) {
+      bloodType = null;
+    }
+
+    // 1. Update public.profiles — preserve is_onboarding_completed.
+    try {
+      final profilePayload = {
+        'full_name': user.name,
+        'date_of_birth': dobString,
+        'gender': user.gender,
+        'height_cm': user.heightCm,
+        'weight_kg': user.weightKg,
+        'blood_type': bloodType,
+        'city': user.city,
+        'phone': user.phone,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      debugPrint('[AuthRepositorySupabase.updateProfile] 1. Updating public.profiles: $profilePayload');
+      await _client.from('profiles').update(profilePayload).eq('id', userId);
+      debugPrint('[AuthRepositorySupabase.updateProfile] 1. public.profiles SUCCESS');
+    } catch (e, st) {
+      _logPostgrestError('public.profiles update', e, st);
+      return Failure(_mapAuthError(e));
+    }
+
+    // 2. Upsert public.user_goals.
+    try {
+      final goalsPayload = {
+        'user_id': userId,
+        'primary_goal': user.primaryGoal ?? 'Improve overall health',
+        'secondary_goals': user.secondaryGoals,
+        'activity_level': user.activityLevel ?? 'Lightly active',
+        'fitness_experience': user.fitnessExperience ?? 'Beginner',
+        'workout_time_per_day': user.workoutTimePerDay ?? '30 minutes',
+        'equipment': user.equipment ?? 'Basic home equipment',
+        'diet_type': user.dietType ?? 'No specific diet',
+        'food_preferences': user.foodPreferences,
+        'foods_to_avoid': user.foodsToAvoid,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      debugPrint('[AuthRepositorySupabase.updateProfile] 2. Upserting public.user_goals');
+      final existingGoal = await _client
+          .from('user_goals')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+      if (existingGoal != null) {
+        await _client.from('user_goals').update(goalsPayload).eq('user_id', userId);
+      } else {
+        await _client.from('user_goals').insert(goalsPayload);
+      }
+      debugPrint('[AuthRepositorySupabase.updateProfile] 2. public.user_goals SUCCESS');
+    } catch (e, st) {
+      _logPostgrestError('public.user_goals upsert', e, st);
+      return Failure(_mapAuthError(e));
+    }
+
+    // 3. Sync public.user_conditions (delete-and-reinsert).
+    try {
+      await _client.from('user_conditions').delete().eq('user_id', userId);
+      final validConditions = user.conditions
+          .where((c) => c != 'None' && c.trim().isNotEmpty)
+          .toSet()
+          .toList();
+      if (validConditions.isNotEmpty) {
+        await _client.from('user_conditions').insert(
+          validConditions.map((c) => {'user_id': userId, 'condition_name': c}).toList(),
+        );
+      }
+      debugPrint('[AuthRepositorySupabase.updateProfile] 3. public.user_conditions SUCCESS');
+    } catch (e, st) {
+      _logPostgrestError('public.user_conditions sync', e, st);
+      return Failure(_mapAuthError(e));
+    }
+
+    // 4. Sync public.user_allergies (delete-and-reinsert).
+    try {
+      await _client.from('user_allergies').delete().eq('user_id', userId);
+      final validAllergies = user.allergies
+          .where((a) => a != 'None' && a.trim().isNotEmpty)
+          .toSet()
+          .toList();
+      if (validAllergies.isNotEmpty) {
+        await _client.from('user_allergies').insert(
+          validAllergies.map((a) => {
+            'user_id': userId,
+            'allergen_name': a,
+            'severity': 'moderate',
+          }).toList(),
+        );
+      }
+      debugPrint('[AuthRepositorySupabase.updateProfile] 4. public.user_allergies SUCCESS');
+    } catch (e, st) {
+      _logPostgrestError('public.user_allergies sync', e, st);
+      return Failure(_mapAuthError(e));
+    }
+
+    // Re-fetch the fresh profile so the notifier gets server-side values.
+    try {
+      if (authUser != null) {
+        final fresh = await _fetchUserProfile(authUser);
+        debugPrint('[AuthRepositorySupabase.updateProfile] SUCCESS — returning fresh profile');
+        return Success(fresh);
+      }
+    } catch (e) {
+      debugPrint('[AuthRepositorySupabase.updateProfile] Warning: re-fetch failed, returning local copy: $e');
+    }
+
+    // Fallback: return the locally-edited user.
+    return Success(user.copyWith(id: userId));
+  }
+
   /// Fetches public.profiles row and associated health data for [authUser] and maps it to a [User].
   Future<User> _fetchUserProfile(supa.User authUser) async {
     try {

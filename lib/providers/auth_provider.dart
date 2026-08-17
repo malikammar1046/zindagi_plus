@@ -59,9 +59,26 @@ class AuthNotifier extends StateNotifier<User?> {
     state = null;
   }
 
-  /// Updates the current user's profile fields and notifies listeners.
-  void updateProfile(User updated) {
-    state = updated;
+  /// Persists updated profile to Supabase and refreshes local auth state.
+  ///
+  /// Returns [Success<User>] on success, or [Failure] with a user-facing
+  /// message on error. The caller should display the error message to the user.
+  Future<Result<User>> updateProfile(User updated) async {
+    if (_authRepo == null) {
+      // Fallback for mock/test: optimistic local update.
+      state = updated;
+      return Success(updated);
+    }
+
+    final result = await _authRepo.updateProfile(updated);
+    switch (result) {
+      case Success(data: final freshUser):
+        state = freshUser;
+        return Success(freshUser);
+      case Failure(message: final msg):
+        debugPrint('[AuthNotifier.updateProfile] Failed: $msg');
+        return Failure(msg);
+    }
   }
 
   /// Persists onboarding questionnaire answers to Supabase/backend,

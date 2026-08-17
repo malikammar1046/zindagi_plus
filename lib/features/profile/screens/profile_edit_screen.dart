@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
@@ -141,26 +142,43 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
-    await Future.delayed(const Duration(milliseconds: 300));
+
     final currentUser = ref.read(authNotifierProvider);
-    if (currentUser != null) {
-      final updatedUser = currentUser.copyWith(
-        name: _nameCtrl.text.trim(),
-        age: int.tryParse(_ageCtrl.text.trim()),
-        weightKg: double.tryParse(_weightCtrl.text.trim()),
-        heightCm: double.tryParse(_heightCtrl.text.trim()),
-        bloodType: _bloodType,
-        city: _cityCtrl.text.trim(),
-        primaryGoal: _primaryGoal,
-        dietType: _dietType,
-        conditions: _conditions.toList(),
-        allergies: _allergies.toList(),
-      );
-      ref.read(authNotifierProvider.notifier).updateProfile(updatedUser);
+    if (currentUser == null) {
+      setState(() => _isSaving = false);
+      return;
     }
+
+    final updatedUser = currentUser.copyWith(
+      name: _nameCtrl.text.trim(),
+      age: int.tryParse(_ageCtrl.text.trim()),
+      weightKg: double.tryParse(_weightCtrl.text.trim()),
+      heightCm: double.tryParse(_heightCtrl.text.trim()),
+      bloodType: _bloodType,
+      city: _cityCtrl.text.trim(),
+      primaryGoal: _primaryGoal,
+      dietType: _dietType,
+      conditions: _conditions.toList(),
+      allergies: _allergies.toList(),
+    );
+
+    final result =
+        await ref.read(authNotifierProvider.notifier).updateProfile(updatedUser);
+
     if (!mounted) return;
     setState(() => _isSaving = false);
-    context.pop();
+
+    switch (result) {
+      case Success():
+        context.pop();
+      case Failure(message: final msg):
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Save failed: $msg'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+    }
   }
 
   @override

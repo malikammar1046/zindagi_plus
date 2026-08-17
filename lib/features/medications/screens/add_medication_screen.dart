@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/medication.dart';
 import 'package:zindagi_plus/providers/medication_provider.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
@@ -46,10 +47,11 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
     final timeStr = _time.format(context);
 
     final newMed = Medication(
-      id: 'med_${DateTime.now().millisecondsSinceEpoch}',
+      id: '', // Will be replaced by the Supabase-generated UUID.
       name: _nameCtrl.text.trim(),
       dose: _dosageCtrl.text.trim(),
       time: '$timeStr — ${_noteCtrl.text.trim().isNotEmpty ? _noteCtrl.text.trim() : 'As prescribed'}',
+      scheduledTimeOfDay: _time,
       status: MedStatus.pending,
       note: _noteCtrl.text.trim().isNotEmpty
           ? _noteCtrl.text.trim()
@@ -58,17 +60,30 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
       colorValue: 0xFF00674F,
     );
 
-    await ref.read(medicationProvider.notifier).addMedication(newMed);
+
+    final result =
+        await ref.read(medicationProvider.notifier).addMedication(newMed);
 
     if (!mounted) return;
     setState(() => _isSaving = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${newMed.name} added to your schedule'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-    );
-    context.pop();
+
+    switch (result) {
+      case Success():
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${newMed.name} added to your schedule'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+        context.pop();
+      case Failure(message: final msg):
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not add medication: $msg'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+    }
   }
 
   @override

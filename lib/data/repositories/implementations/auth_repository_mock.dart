@@ -110,4 +110,14 @@ class AuthRepositoryMock implements AuthRepository {
     _currentUser = user.copyWith(isOnboardingCompleted: true);
     return Success(_currentUser!);
   }
+
+  @override
+  Future<Result<User>> updateProfile(User user) async {
+    // Mock: update in-memory user, preserve onboarding status.
+    _currentUser = user.copyWith(
+      isOnboardingCompleted: _currentUser?.isOnboardingCompleted ?? false,
+    );
+    return Success(_currentUser!);
+  }
 }
+

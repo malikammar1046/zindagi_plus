@@ -87,7 +87,7 @@ void main() {
 
       // Update profile
       final updated = user.copyWith(city: 'Lahore', weightKg: 70.0);
-      notifier.updateProfile(updated);
+      await notifier.updateProfile(updated);
       expect(container.read(authNotifierProvider)?.city, 'Lahore');
       expect(container.read(authNotifierProvider)?.weightKg, 70.0);
 

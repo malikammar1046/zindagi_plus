@@ -37,12 +37,8 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final medications = ref.watch(medicationProvider);
+    final medState = ref.watch(medicationProvider);
     final notifier = ref.read(medicationProvider.notifier);
-
-    final takenCount = notifier.takenCount;
-    final totalCount = notifier.totalCount;
-    final adherence = notifier.adherence;
 
     return Scaffold(
       appBar: AppBar(
@@ -59,129 +55,164 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen>
       floatingActionButton: _AddMedFab(
         onTap: () => context.push('/add-medication'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-        children: [
-          // ── Adherence ring banner ─────────────────────────────────────
-          AnimatedBuilder(
-            animation: _ringCtrl,
-            builder: (_, _) {
-              final t = CurvedAnimation(
-                parent: _ringCtrl,
-                curve: Curves.easeOutCubic,
-              ).value;
-              return AppCard(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 88,
-                      height: 88,
-                      child: CustomPaint(
-                        painter: _AdherenceRingPainter(
-                          progress: adherence * t,
-                          trackColor: theme.dividerColor,
-                          progressColor: colorScheme.primary,
+      body: medState.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline_rounded,
+                    size: 48, color: colorScheme.error),
+                const SizedBox(height: 12),
+                Text(
+                  e.toString(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: colorScheme.error),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => notifier.refresh(),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        data: (allMeds) {
+          final medications = notifier.activeMedications;
+          final takenCount = notifier.takenCount;
+          final totalCount = notifier.totalCount;
+          final adherence = notifier.adherence;
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+            children: [
+              // ── Adherence ring banner ─────────────────────────────────
+              AnimatedBuilder(
+                animation: _ringCtrl,
+                builder: (_, _) {
+                  final t = CurvedAnimation(
+                    parent: _ringCtrl,
+                    curve: Curves.easeOutCubic,
+                  ).value;
+                  return AppCard(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 88,
+                          height: 88,
+                          child: CustomPaint(
+                            painter: _AdherenceRingPainter(
+                              progress: adherence * t,
+                              trackColor: theme.dividerColor,
+                              progressColor: colorScheme.primary,
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '${(adherence * t * 100).round()}%',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  Text(
+                                    'today',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        child: Center(
+                        const SizedBox(width: 20),
+                        Expanded(
                           child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${(adherence * t * 100).round()}%',
+                                'Adherence Today',
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
                                   color: colorScheme.onSurface,
                                 ),
                               ),
+                              const SizedBox(height: 6),
                               Text(
-                                'today',
+                                '$takenCount of $totalCount doses taken',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 13,
                                   color: colorScheme.onSurface
-                                      .withValues(alpha: 0.6),
+                                      .withValues(alpha: 0.7),
                                 ),
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  _StatusDot(colorScheme.primary, 'Taken'),
+                                  const _StatusDot(Colors.orange, 'Pending'),
+                                  const _StatusDot(Colors.red, 'Missed'),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Adherence Today',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '$takenCount of $totalCount doses taken',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: colorScheme.onSurface
-                                  .withValues(alpha: 0.7),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 4,
-                            children: [
-                              _StatusDot(colorScheme.primary, 'Taken'),
-                              const _StatusDot(Colors.orange, 'Pending'),
-                              const _StatusDot(Colors.red, 'Missed'),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-
-          const SizedBox(height: 24),
-          const SectionHeader(title: "Today's Schedule"),
-          const SizedBox(height: 16),
-
-          // ── Medication cards ──────────────────────────────────────────
-          if (medications.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 40),
-              child: Center(
-                child: Text(
-                  'No medications added yet.\nTap below to add your first prescription.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, height: 1.5),
-                ),
+                  );
+                },
               ),
-            )
-          else
-            ...List.generate(medications.length, (i) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _MedCard(
-                  med: medications[i],
-                  onToggle: () => ref
-                      .read(medicationProvider.notifier)
-                      .toggleStatus(i),
-                ),
-              );
-            }),
-        ],
+
+              const SizedBox(height: 24),
+              const SectionHeader(title: "Today's Schedule"),
+              const SizedBox(height: 16),
+
+              // ── Medication cards ──────────────────────────────────────
+              if (medications.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(
+                    child: Text(
+                      'No medications added yet.\nTap below to add your first prescription.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey, height: 1.5),
+                    ),
+                  ),
+                )
+              else
+                ...List.generate(medications.length, (i) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _MedCard(
+                      med: medications[i],
+                      onToggle: () => ref
+                          .read(medicationProvider.notifier)
+                          .toggleStatus(i),
+                    ),
+                  );
+                }),
+            ],
+          );
+        },
       ),
     );
   }
 }
+
 
 // ── Medication card ────────────────────────────────────────────────────────────
 

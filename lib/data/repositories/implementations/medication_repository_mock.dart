@@ -110,6 +110,17 @@ class MedicationRepositoryMock implements MedicationRepository {
   }
 
   @override
+  Future<Result<void>> deleteMedication(String id) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    final index = _medications.indexWhere((m) => m.id == id);
+    if (index == -1) {
+      return const Failure('Medication not found.');
+    }
+    _medications[index] = _medications[index].copyWith(isActive: false);
+    return const Success(null);
+  }
+
+  @override
   Future<Result<DoseLog>> logDose(String medicationId, MedStatus status) async {
     await Future.delayed(const Duration(milliseconds: 200));
     final med = _medications.firstWhere(
@@ -139,4 +150,56 @@ class MedicationRepositoryMock implements MedicationRepository {
     await Future.delayed(const Duration(milliseconds: 300));
     return Success(List.unmodifiable(_doseLogs));
   }
+
+  @override
+  Future<Result<int>> reconcileMissedDoses() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    final now = DateTime.now();
+    int count = 0;
+
+    for (int i = 0; i < _medications.length; i++) {
+      final med = _medications[i];
+      if (!med.isActive) continue;
+
+      // Check if a dose log already exists for this medication today
+      final hasLogToday = _doseLogs.any(
+        (log) =>
+            log.medicationId == med.id &&
+            log.loggedAt.year == now.year &&
+            log.loggedAt.month == now.month &&
+            log.loggedAt.day == now.day,
+      );
+
+      if (hasLogToday) continue;
+
+      final time = med.parsedTimeOfDay;
+      if (time == null) continue;
+
+      final scheduledToday = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        time.hour,
+        time.minute,
+      );
+
+      final gracePeriodEnd = scheduledToday.add(const Duration(minutes: 30));
+
+      if (now.isAfter(gracePeriodEnd) || now.isAtSameMomentAs(gracePeriodEnd)) {
+        final log = DoseLog(
+          medicationId: med.id,
+          medicationName: med.name,
+          dose: med.dose,
+          status: MedStatus.missed,
+          loggedAt: gracePeriodEnd,
+        );
+        _doseLogs.insert(0, log);
+        _medications[i] = med.copyWith(status: MedStatus.missed);
+        count++;
+      }
+    }
+
+    return Success(count);
+  }
 }
+

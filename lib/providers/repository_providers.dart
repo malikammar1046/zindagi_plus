@@ -6,6 +6,7 @@ import 'package:zindagi_plus/data/repositories/implementations/chat_repository_m
 import 'package:zindagi_plus/data/repositories/implementations/health_repository_mock.dart';
 import 'package:zindagi_plus/data/repositories/implementations/lab_report_repository_mock.dart';
 import 'package:zindagi_plus/data/repositories/implementations/medication_repository_mock.dart';
+import 'package:zindagi_plus/data/repositories/implementations/medication_repository_supabase.dart';
 import 'package:zindagi_plus/data/repositories/implementations/recommendation_repository_mock.dart';
 import 'package:zindagi_plus/data/repositories/interfaces/auth_repository.dart';
 import 'package:zindagi_plus/data/repositories/interfaces/chat_repository.dart';
@@ -27,14 +28,26 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepositoryMock();
 });
 
+/// Provides the active [MedicationRepository] implementation.
+///
+/// Uses [MedicationRepositorySupabase] when Supabase is configured.
+/// Falls back to [MedicationRepositoryMock] for local/test environments.
+final medicationRepositoryProvider = Provider<MedicationRepository>((ref) {
+  if (Environment.isSupabaseConfigured && isSupabaseInitialized) {
+    final client = ref.watch(supabaseClientProvider);
+    return MedicationRepositorySupabase(client);
+  }
+  return MedicationRepositoryMock();
+});
+
 /// Provides the active [HealthRepository] implementation.
+///
+/// Dashboard insights and health score remain mock until AI integration
+/// (future phase). Real data (activeMeds, weight) is injected into
+/// [dashboardDataProvider] via [authNotifierProvider] and
+/// [medicationRepositoryProvider].
 final healthRepositoryProvider = Provider<HealthRepository>(
   (ref) => HealthRepositoryMock(),
-);
-
-/// Provides the active [MedicationRepository] implementation.
-final medicationRepositoryProvider = Provider<MedicationRepository>(
-  (ref) => MedicationRepositoryMock(),
 );
 
 /// Provides the active [LabReportRepository] implementation.
