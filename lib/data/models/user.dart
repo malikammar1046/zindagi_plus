@@ -92,14 +92,38 @@ class User {
     String? gender,
     String? city,
   }) {
+    DateTime? effectiveDob = dateOfBirth ?? this.dateOfBirth;
+    int? effectiveAge = age ?? this.age;
+
+    if (dateOfBirth == null && age != null && age != this.age && age > 0) {
+      final now = DateTime.now();
+      if (this.dateOfBirth != null) {
+        final birthYear = now.year - age;
+        final month = this.dateOfBirth!.month;
+        final maxDay = (month == 2 && (birthYear % 4 != 0 || (birthYear % 100 == 0 && birthYear % 400 != 0))) ? 28 : this.dateOfBirth!.day;
+        final day = this.dateOfBirth!.day > maxDay ? maxDay : this.dateOfBirth!.day;
+        effectiveDob = DateTime(birthYear, month, day);
+      } else {
+        effectiveDob = DateTime(now.year - age, 1, 1);
+      }
+    } else if (age == null && dateOfBirth != null && dateOfBirth != this.dateOfBirth) {
+      final now = DateTime.now();
+      var calculatedAge = now.year - dateOfBirth.year;
+      if (now.month < dateOfBirth.month ||
+          (now.month == dateOfBirth.month && now.day < dateOfBirth.day)) {
+        calculatedAge--;
+      }
+      effectiveAge = calculatedAge >= 0 ? calculatedAge : null;
+    }
+
     return User(
       id: id ?? this.id,
       name: name ?? this.name,
       email: email ?? this.email,
       isOnboardingCompleted:
           isOnboardingCompleted ?? this.isOnboardingCompleted,
-      age: age ?? this.age,
-      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      age: effectiveAge,
+      dateOfBirth: effectiveDob,
       weightKg: weightKg ?? this.weightKg,
       heightCm: heightCm ?? this.heightCm,
       bloodType: bloodType ?? this.bloodType,
@@ -144,6 +168,8 @@ class User {
         calculatedAge--;
       }
       if (calculatedAge < 0) calculatedAge = null;
+    } else if (map['age'] != null) {
+      calculatedAge = (map['age'] as num?)?.toInt();
     }
 
     return User(
@@ -195,6 +221,7 @@ class User {
       name: json['name'] as String,
       email: json['email'] as String,
       isOnboardingCompleted: json['isOnboardingCompleted'] as bool? ?? false,
+      photoUrl: json['photoUrl'] as String?,
     );
   }
 
@@ -204,6 +231,7 @@ class User {
         'name': name,
         'email': email,
         'isOnboardingCompleted': isOnboardingCompleted,
+        'photoUrl': photoUrl,
       };
 
   @override

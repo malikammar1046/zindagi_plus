@@ -177,12 +177,13 @@ CREATE TABLE IF NOT EXISTS public.lab_reports (
     file_size_bytes BIGINT NULL,
     mime_type TEXT NULL,
     status TEXT NOT NULL DEFAULT 'uploaded',
+    extracted_text TEXT NOT NULL DEFAULT '',
     ai_summary TEXT NOT NULL DEFAULT '',
     error_message TEXT NULL,
     uploaded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     processed_at TIMESTAMPTZ NULL,
 
-    CONSTRAINT chk_lab_report_status CHECK (status IN ('uploaded', 'processing', 'processed', 'failed')),
+    CONSTRAINT chk_lab_report_status CHECK (status IN ('uploaded', 'processing', 'completed', 'processed', 'failed')),
     CONSTRAINT uq_lab_reports_id_user UNIQUE (id, user_id)
 );
 

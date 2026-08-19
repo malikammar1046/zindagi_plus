@@ -169,7 +169,7 @@ class _ActivityScreenState extends State<ActivityScreen>
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        leading: const AppBackButton(fallbackLocation: '/dashboard'),
         title: const Text('Activity Plan'),
         actions: [
           Container(

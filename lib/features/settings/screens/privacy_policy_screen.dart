@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
@@ -12,10 +12,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Privacy Policy'),
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/settings'),
       ),
       body: SafeArea(
         child: ListView(

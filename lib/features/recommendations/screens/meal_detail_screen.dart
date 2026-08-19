@@ -121,17 +121,7 @@ class _MealDetailScreenState extends State<MealDetailScreen>
             expandedHeight: 200,
             pinned: true,
             backgroundColor: colorScheme.surface,
-            leading: IconButton(
-              icon: const CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 18,
-                  color: Colors.black87,
-                ),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            leading: const AppBackButton(fallbackLocation: '/meals'),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(

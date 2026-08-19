@@ -224,6 +224,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     path: 'processing',
                     builder: (_, state) {
                       String fileName = 'lab_report.jpg';
+                      String? filePath;
                       String? reportId;
                       MockProcessingScenario scenario =
                           MockProcessingScenario.success;
@@ -234,6 +235,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                         final map = state.extra as Map<String, dynamic>;
                         fileName =
                             map['fileName'] as String? ?? fileName;
+                        filePath = map['filePath'] as String?;
                         reportId = map['reportId'] as String?;
                         scenario = map['scenario']
                                 as MockProcessingScenario? ??
@@ -242,6 +244,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
                       return ReportProcessingScreen(
                         fileName: fileName,
+                        filePath: filePath,
                         reportId: reportId,
                         scenario: scenario,
                       );

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -170,6 +171,73 @@ class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({required this.user});
   final User? user;
 
+  Widget _buildAvatar(String initials) {
+    final photoUrl = user?.photoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      final isNetwork =
+          photoUrl.startsWith('http://') || photoUrl.startsWith('https://');
+      if (isNetwork) {
+        return Image.network(
+          photoUrl,
+          width: 100,
+          height: 100,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Center(
+            child: Text(
+              initials,
+              style: const TextStyle(
+                fontSize: 38,
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  fontSize: 38,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            );
+          },
+        );
+      } else {
+        return Image.file(
+          File(photoUrl),
+          width: 100,
+          height: 100,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Center(
+            child: Text(
+              initials,
+              style: const TextStyle(
+                fontSize: 38,
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return Center(
+      child: Text(
+        initials,
+        style: const TextStyle(
+          fontSize: 38,
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final initials = (user?.name.isNotEmpty == true)
@@ -215,15 +283,8 @@ class _ProfileHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Center(
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      fontSize: 38,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                child: ClipOval(
+                  child: _buildAvatar(initials),
                 ),
               ),
             ],

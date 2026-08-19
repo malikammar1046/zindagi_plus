@@ -110,10 +110,7 @@ class _ScoreBreakdownScreenState extends State<ScoreBreakdownScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Health Score'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/dashboard'),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),

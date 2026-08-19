@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zindagi_plus/core/config/environment.dart';
 import 'package:zindagi_plus/data/repositories/implementations/auth_repository_mock.dart';
@@ -5,6 +6,7 @@ import 'package:zindagi_plus/data/repositories/implementations/auth_repository_s
 import 'package:zindagi_plus/data/repositories/implementations/chat_repository_mock.dart';
 import 'package:zindagi_plus/data/repositories/implementations/health_repository_mock.dart';
 import 'package:zindagi_plus/data/repositories/implementations/lab_report_repository_mock.dart';
+import 'package:zindagi_plus/data/repositories/implementations/lab_report_repository_supabase.dart';
 import 'package:zindagi_plus/data/repositories/implementations/medication_repository_mock.dart';
 import 'package:zindagi_plus/data/repositories/implementations/medication_repository_supabase.dart';
 import 'package:zindagi_plus/data/repositories/implementations/recommendation_repository_mock.dart';
@@ -15,6 +17,24 @@ import 'package:zindagi_plus/data/repositories/interfaces/lab_report_repository.
 import 'package:zindagi_plus/data/repositories/interfaces/medication_repository.dart';
 import 'package:zindagi_plus/data/repositories/interfaces/recommendation_repository.dart';
 import 'package:zindagi_plus/providers/supabase_provider.dart';
+import 'package:zindagi_plus/services/ocr/mlkit_ocr_service.dart';
+import 'package:zindagi_plus/services/ocr/mock_ocr_service.dart';
+import 'package:zindagi_plus/services/ocr/ocr_service.dart';
+
+/// Provides the active [OcrService] implementation.
+///
+/// Uses [MlKitOcrService] for on-device native OCR on mobile devices.
+/// Falls back to [MockOcrService] in mock flavor, testing, or unsupported desktop environments.
+final ocrServiceProvider = Provider<OcrService>((ref) {
+  final isMobile = !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  if (!Environment.isMock && isMobile) {
+    return MlKitOcrService();
+  }
+  return MockOcrService();
+});
 
 /// Provides the active [AuthRepository] implementation.
 ///
@@ -41,19 +61,22 @@ final medicationRepositoryProvider = Provider<MedicationRepository>((ref) {
 });
 
 /// Provides the active [HealthRepository] implementation.
-///
-/// Dashboard insights and health score remain mock until AI integration
-/// (future phase). Real data (activeMeds, weight) is injected into
-/// [dashboardDataProvider] via [authNotifierProvider] and
-/// [medicationRepositoryProvider].
 final healthRepositoryProvider = Provider<HealthRepository>(
   (ref) => HealthRepositoryMock(),
 );
 
 /// Provides the active [LabReportRepository] implementation.
-final labReportRepositoryProvider = Provider<LabReportRepository>(
-  (ref) => LabReportRepositoryMock(),
-);
+///
+/// Uses [LabReportRepositorySupabase] when Supabase is configured and initialized,
+/// with [LabReportRepositoryMock] fallback for local/test environments.
+final labReportRepositoryProvider = Provider<LabReportRepository>((ref) {
+  final ocr = ref.watch(ocrServiceProvider);
+  if (Environment.isSupabaseConfigured && isSupabaseInitialized) {
+    final client = ref.watch(supabaseClientProvider);
+    return LabReportRepositorySupabase(client, ocr);
+  }
+  return LabReportRepositoryMock(ocrService: ocr);
+});
 
 /// Provides the active [RecommendationRepository] implementation.
 final recommendationRepositoryProvider = Provider<RecommendationRepository>(

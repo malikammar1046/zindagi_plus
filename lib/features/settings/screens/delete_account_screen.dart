@@ -43,10 +43,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Delete Account'),
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/settings/account'),
       ),
       body: SafeArea(
         child: ListView(

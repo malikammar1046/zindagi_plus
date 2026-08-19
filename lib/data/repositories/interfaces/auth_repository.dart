@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthState, OtpType;
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/user.dart';
@@ -54,6 +55,11 @@ abstract class AuthRepository {
   /// and `public.user_allergies`. Does NOT change `is_onboarding_completed`.
   /// Returns the refreshed [User] on success.
   Future<Result<User>> updateProfile(User user);
+
+  /// Uploads a profile image for the authenticated user to Supabase Storage,
+  /// links the resulting storage URL in the user's `profiles.avatar_url` record,
+  /// and returns the refreshed [User].
+  Future<Result<User>> uploadProfilePhoto(File imageFile);
 
   /// Stream of Supabase auth state change events.
   Stream<AuthState>? get authStateChanges;

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import 'package:zindagi_plus/core/config/environment.dart';
@@ -188,13 +189,7 @@ class AuthRepositorySupabase implements AuthRepository {
     }
 
     // Calculate ISO date string for date_of_birth
-    DateTime? calculatedDob = user.dateOfBirth;
-    if (calculatedDob == null && user.age != null && user.age! > 0) {
-      calculatedDob = DateTime(DateTime.now().year - user.age!, 1, 1);
-    }
-    final dobString = calculatedDob != null
-        ? '${calculatedDob.year.toString().padLeft(4, '0')}-${calculatedDob.month.toString().padLeft(2, '0')}-${calculatedDob.day.toString().padLeft(2, '0')}'
-        : null;
+    final dobString = _deriveDobString(user);
 
     // Normalize blood type to standard ASCII (e.g. 'A-', 'B-')
     String? bloodType = user.bloodType?.replaceAll('−', '-').trim();
@@ -256,71 +251,58 @@ class AuthRepositorySupabase implements AuthRepository {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
       debugPrint('[AuthRepositorySupabase.completeOnboarding] 2. Saving public.user_goals: $goalsPayload');
-
-      final existingGoal = await _client
-          .from('user_goals')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-      if (existingGoal != null) {
-        debugPrint('[AuthRepositorySupabase.completeOnboarding] 2. Updating existing public.user_goals');
-        await _client.from('user_goals').update(goalsPayload).eq('user_id', userId);
-      } else {
-        debugPrint('[AuthRepositorySupabase.completeOnboarding] 2. Inserting new public.user_goals');
-        await _client.from('user_goals').insert(goalsPayload);
-      }
+      await _client.from('user_goals').upsert(goalsPayload);
       debugPrint('[AuthRepositorySupabase.completeOnboarding] 2. public.user_goals SUCCESS');
     } catch (e, st) {
       _logPostgrestError('public.user_goals save', e, st);
       return Failure(_mapAuthError(e));
     }
 
-    // 3. Sync public.user_conditions
+    // 3. Save public.user_conditions (clear and re-insert)
     try {
-      debugPrint('[AuthRepositorySupabase.completeOnboarding] 3. Syncing public.user_conditions');
+      debugPrint('[AuthRepositorySupabase.completeOnboarding] 3. Saving public.user_conditions: ${user.conditions}');
       await _client.from('user_conditions').delete().eq('user_id', userId);
       final validConditions = user.conditions
           .where((c) => c != 'None' && c.trim().isNotEmpty)
           .toSet()
           .toList();
       if (validConditions.isNotEmpty) {
-        final conditionRows = validConditions.map((c) => {
-          'user_id': userId,
-          'condition_name': c,
-        }).toList();
-        debugPrint('[AuthRepositorySupabase.completeOnboarding] 3. Inserting user_conditions: $conditionRows');
-        await _client.from('user_conditions').insert(conditionRows);
+        final conditionsPayload = validConditions
+            .map((c) => {'user_id': userId, 'condition_name': c})
+            .toList();
+        await _client.from('user_conditions').insert(conditionsPayload);
       }
       debugPrint('[AuthRepositorySupabase.completeOnboarding] 3. public.user_conditions SUCCESS');
     } catch (e, st) {
-      _logPostgrestError('public.user_conditions sync', e, st);
+      _logPostgrestError('public.user_conditions save', e, st);
       return Failure(_mapAuthError(e));
     }
 
-    // 4. Sync public.user_allergies
+    // 4. Save public.user_allergies (clear and re-insert)
     try {
-      debugPrint('[AuthRepositorySupabase.completeOnboarding] 4. Syncing public.user_allergies');
+      debugPrint('[AuthRepositorySupabase.completeOnboarding] 4. Saving public.user_allergies: ${user.allergies}');
       await _client.from('user_allergies').delete().eq('user_id', userId);
       final validAllergies = user.allergies
           .where((a) => a != 'None' && a.trim().isNotEmpty)
           .toSet()
           .toList();
       if (validAllergies.isNotEmpty) {
-        final allergyRows = validAllergies.map((a) => {
-          'user_id': userId,
-          'allergen_name': a,
-          'severity': 'moderate',
-        }).toList();
-        debugPrint('[AuthRepositorySupabase.completeOnboarding] 4. Inserting user_allergies: $allergyRows');
-        await _client.from('user_allergies').insert(allergyRows);
+        final allergiesPayload = validAllergies
+            .map((a) => {
+                  'user_id': userId,
+                  'allergen_name': a,
+                  'severity': 'moderate',
+                })
+            .toList();
+        await _client.from('user_allergies').insert(allergiesPayload);
       }
       debugPrint('[AuthRepositorySupabase.completeOnboarding] 4. public.user_allergies SUCCESS');
     } catch (e, st) {
-      _logPostgrestError('public.user_allergies sync', e, st);
+      _logPostgrestError('public.user_allergies save', e, st);
       return Failure(_mapAuthError(e));
     }
 
+    // 5. Build and return the completed User model
     final completedUser = user.copyWith(
       id: userId,
       isOnboardingCompleted: true,
@@ -328,6 +310,34 @@ class AuthRepositorySupabase implements AuthRepository {
 
     debugPrint('[AuthRepositorySupabase.completeOnboarding] ALL OPERATIONS COMPLETED SUCCESSFULLY');
     return Success(completedUser);
+  }
+
+  /// Converts [user.dateOfBirth] or [user.age] into an ISO 'YYYY-MM-DD' string for public.profiles.
+  /// If age is provided, ensures the date_of_birth year matches the requested age.
+  String? _deriveDobString(User user) {
+    DateTime? calculatedDob = user.dateOfBirth;
+    if (user.age != null && user.age! > 0) {
+      final now = DateTime.now();
+      if (calculatedDob == null) {
+        calculatedDob = DateTime(now.year - user.age!, 1, 1);
+      } else {
+        var dobAge = now.year - calculatedDob.year;
+        if (now.month < calculatedDob.month ||
+            (now.month == calculatedDob.month && now.day < calculatedDob.day)) {
+          dobAge--;
+        }
+        if (dobAge != user.age) {
+          final birthYear = now.year - user.age!;
+          final month = calculatedDob.month;
+          final maxDay = (month == 2 && (birthYear % 4 != 0 || (birthYear % 100 == 0 && birthYear % 400 != 0))) ? 28 : calculatedDob.day;
+          final day = calculatedDob.day > maxDay ? maxDay : calculatedDob.day;
+          calculatedDob = DateTime(birthYear, month, day);
+        }
+      }
+    }
+
+    if (calculatedDob == null) return null;
+    return '${calculatedDob.year.toString().padLeft(4, '0')}-${calculatedDob.month.toString().padLeft(2, '0')}-${calculatedDob.day.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -341,14 +351,8 @@ class AuthRepositorySupabase implements AuthRepository {
       return const Failure('No active session. Please log in again.');
     }
 
-    // Derive date_of_birth from age if dateOfBirth not set directly.
-    DateTime? calculatedDob = user.dateOfBirth;
-    if (calculatedDob == null && user.age != null && user.age! > 0) {
-      calculatedDob = DateTime(DateTime.now().year - user.age!, 1, 1);
-    }
-    final dobString = calculatedDob != null
-        ? '${calculatedDob.year.toString().padLeft(4, '0')}-${calculatedDob.month.toString().padLeft(2, '0')}-${calculatedDob.day.toString().padLeft(2, '0')}'
-        : null;
+    // Derive date_of_birth from age / dateOfBirth.
+    final dobString = _deriveDobString(user);
 
     // Normalise blood type to ASCII minus sign.
     String? bloodType = user.bloodType?.replaceAll('−', '-').trim();
@@ -359,7 +363,7 @@ class AuthRepositorySupabase implements AuthRepository {
       bloodType = null;
     }
 
-    // 1. Update public.profiles — preserve is_onboarding_completed.
+    // 1. Update public.profiles — preserve is_onboarding_completed and avatar_url.
     try {
       final profilePayload = {
         'full_name': user.name,
@@ -370,6 +374,7 @@ class AuthRepositorySupabase implements AuthRepository {
         'blood_type': bloodType,
         'city': user.city,
         'phone': user.phone,
+        if (user.photoUrl != null) 'avatar_url': user.photoUrl,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
       debugPrint('[AuthRepositorySupabase.updateProfile] 1. Updating public.profiles: $profilePayload');
@@ -467,6 +472,57 @@ class AuthRepositorySupabase implements AuthRepository {
     return Success(user.copyWith(id: userId));
   }
 
+  @override
+  Future<Result<User>> uploadProfilePhoto(File imageFile) async {
+    final authUser = _client.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('No active session. Please log in again.');
+    }
+    final userId = authUser.id;
+
+    if (!await imageFile.exists()) {
+      return const Failure('Selected image file does not exist.');
+    }
+
+    try {
+      final fileBytes = await imageFile.readAsBytes();
+      if (fileBytes.isEmpty) {
+        return const Failure('Selected image file is empty.');
+      }
+
+      final storagePath = '$userId/profile.jpg';
+      debugPrint('[AuthRepositorySupabase.uploadProfilePhoto] Uploading to avatars/$storagePath (${fileBytes.length} bytes)');
+
+      await _client.storage.from('avatars').uploadBinary(
+            storagePath,
+            fileBytes,
+            fileOptions: const supa.FileOptions(
+              upsert: true,
+              contentType: 'image/jpeg',
+            ),
+          );
+
+      final baseUrl = _client.storage.from('avatars').getPublicUrl(storagePath);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final publicUrl = '$baseUrl?v=$timestamp';
+
+      debugPrint('[AuthRepositorySupabase.uploadProfilePhoto] Generated publicUrl: $publicUrl');
+      debugPrint('[AuthRepositorySupabase.uploadProfilePhoto] Updating public.profiles.avatar_url');
+
+      await _client.from('profiles').update({
+        'avatar_url': publicUrl,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', userId);
+
+      final updatedUser = await _fetchUserProfile(authUser);
+      debugPrint('[AuthRepositorySupabase.uploadProfilePhoto] SUCCESS photoUrl=${updatedUser.photoUrl}');
+      return Success(updatedUser);
+    } catch (e, st) {
+      _logPostgrestError('uploadProfilePhoto', e, st);
+      return Failure(_mapAuthError(e));
+    }
+  }
+
   /// Fetches public.profiles row and associated health data for [authUser] and maps it to a [User].
   Future<User> _fetchUserProfile(supa.User authUser) async {
     try {
@@ -509,8 +565,23 @@ class AuthRepositorySupabase implements AuthRepository {
               '[AuthRepositorySupabase._fetchUserProfile] Extra profile tables warning: $e');
         }
 
+        final rawAvatar = profile['avatar_url'] as String?;
+        String? resolvedAvatarUrl = rawAvatar;
+        if (rawAvatar != null &&
+            rawAvatar.isNotEmpty &&
+            !rawAvatar.startsWith('http://') &&
+            !rawAvatar.startsWith('https://')) {
+          resolvedAvatarUrl =
+              _client.storage.from('avatars').getPublicUrl(rawAvatar);
+        }
+
+        final enrichedProfile = Map<String, dynamic>.from(profile);
+        if (resolvedAvatarUrl != null) {
+          enrichedProfile['avatar_url'] = resolvedAvatarUrl;
+        }
+
         return User.fromProfile(
-          profile,
+          enrichedProfile,
           email: authUser.email,
           goals: goals,
           conditions: conditions,

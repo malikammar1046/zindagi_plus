@@ -72,7 +72,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
   final Set<String> _conditions = {};
   final Set<String> _allergies = {};
   bool _isSaving = false;
-  File? _profileImage;
+  bool _isUploadingPhoto = false;
   late final AnimationController _entranceCtrl;
 
   @override
@@ -129,13 +129,57 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _profileImage = File(pickedFile.path);
-      });
+  Future<void> _pickAndUploadImage() async {
+    if (_isUploadingPhoto || _isSaving) return;
+
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      final file = File(pickedFile.path);
+      if (!await file.exists()) return;
+
+      setState(() => _isUploadingPhoto = true);
+
+      final result = await ref
+          .read(authNotifierProvider.notifier)
+          .uploadProfilePhoto(file);
+
+      if (!mounted) return;
+      setState(() => _isUploadingPhoto = false);
+
+      switch (result) {
+        case Success():
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile photo updated successfully.'),
+              backgroundColor: Color(0xFF00674F),
+            ),
+          );
+        case Failure(message: final msg):
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Photo upload failed: $msg'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isUploadingPhoto = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to pick or upload image: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 
@@ -160,6 +204,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
       dietType: _dietType,
       conditions: _conditions.toList(),
       allergies: _allergies.toList(),
+      photoUrl: currentUser.photoUrl,
     );
 
     final result =
@@ -170,7 +215,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
 
     switch (result) {
       case Success():
-        context.pop();
+        if (mounted && Navigator.of(context).canPop()) {
+          context.pop();
+        }
       case Failure(message: final msg):
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -181,18 +228,100 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
     }
   }
 
+  Widget _buildAvatarContent(String initials, ColorScheme colorScheme, String? photoUrl) {
+    if (_isUploadingPhoto) {
+      return Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: colorScheme.onPrimary,
+          ),
+        ),
+      );
+    }
+
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      final isNetwork =
+          photoUrl.startsWith('http://') || photoUrl.startsWith('https://');
+      if (isNetwork) {
+        return Image.network(
+          photoUrl,
+          width: 88,
+          height: 88,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Center(
+            child: Text(
+              initials,
+              style: TextStyle(
+                fontSize: 36,
+                color: colorScheme.onPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colorScheme.onPrimary,
+                ),
+              ),
+            );
+          },
+        );
+      } else {
+        return Image.file(
+          File(photoUrl),
+          width: 88,
+          height: 88,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Center(
+            child: Text(
+              initials,
+              style: TextStyle(
+                fontSize: 36,
+                color: colorScheme.onPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return Center(
+      child: Text(
+        initials,
+        style: TextStyle(
+          fontSize: 36,
+          color: colorScheme.onPrimary,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final currentUser = ref.watch(authNotifierProvider);
+    final initials = _nameCtrl.text.isNotEmpty
+        ? _nameCtrl.text[0].toUpperCase()
+        : (currentUser?.name.isNotEmpty == true
+            ? currentUser!.name[0].toUpperCase()
+            : 'U');
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.close_rounded, size: 24),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/profile'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -227,12 +356,6 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
                       decoration: BoxDecoration(
                         color: colorScheme.primary,
                         shape: BoxShape.circle,
-                        image: _profileImage != null
-                            ? DecorationImage(
-                                image: FileImage(_profileImage!),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
                         boxShadow: [
                           BoxShadow(
                             color: colorScheme.primary.withValues(alpha: 0.3),
@@ -241,24 +364,19 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
                           ),
                         ],
                       ),
-                      child: _profileImage == null
-                          ? Center(
-                              child: Text(
-                                _nameCtrl.text.isNotEmpty
-                                    ? _nameCtrl.text[0].toUpperCase()
-                                    : 'U',
-                                style: TextStyle(
-                                  fontSize: 36,
-                                  color: colorScheme.onPrimary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            )
-                          : null,
+                      child: ClipOval(
+                        child: _buildAvatarContent(
+                          initials,
+                          colorScheme,
+                          currentUser?.photoUrl,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     _TapScale(
-                      onTap: _pickImage,
+                      onTap: (_isUploadingPhoto || _isSaving)
+                          ? () {}
+                          : _pickAndUploadImage,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -275,14 +393,18 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
                             Icon(
                               Icons.camera_alt_outlined,
                               size: 14,
-                              color: colorScheme.onSurface.withValues(alpha: 0.6),
+                              color: colorScheme.onSurface.withValues(
+                                  alpha: _isUploadingPhoto ? 0.3 : 0.6),
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Change Photo',
+                              _isUploadingPhoto
+                                  ? 'Uploading...'
+                                  : 'Change Photo',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                color: colorScheme.onSurface.withValues(
+                                    alpha: _isUploadingPhoto ? 0.3 : 0.6),
                               ),
                             ),
                           ],

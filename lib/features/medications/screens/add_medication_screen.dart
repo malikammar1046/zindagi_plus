@@ -93,10 +93,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Medication'),
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.close_rounded, size: 24),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/medications'),
       ),
       body: SafeArea(
         child: Form(

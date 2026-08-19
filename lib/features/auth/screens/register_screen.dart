@@ -74,10 +74,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Account'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.go('/login'),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/login'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(

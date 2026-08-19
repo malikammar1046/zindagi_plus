@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class WeeklyReviewScreen extends StatelessWidget {
@@ -12,10 +11,7 @@ class WeeklyReviewScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Weekly Review'),
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/dashboard'),
       ),
       body: SafeArea(
         child: ListView(

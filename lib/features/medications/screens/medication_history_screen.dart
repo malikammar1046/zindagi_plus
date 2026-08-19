@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/medication.dart';
 import 'package:zindagi_plus/providers/repository_providers.dart';
@@ -14,10 +13,7 @@ class MedicationHistoryScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dose History'),
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/medications'),
       ),
       body: FutureBuilder<Result<List<DoseLog>>>(
         future: ref.read(medicationRepositoryProvider).getDoseHistory(),

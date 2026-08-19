@@ -11,6 +11,10 @@ class MedicationReminderScreen extends StatelessWidget {
     
     return Scaffold(
       backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: colorScheme.surface,
+        leading: const AppBackButton(fallbackLocation: '/dashboard'),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),

@@ -1,21 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zindagi_plus/core/network/result.dart';
-import 'package:zindagi_plus/data/models/lab_report.dart';
 import 'package:zindagi_plus/data/models/medication.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
 import 'package:zindagi_plus/providers/repository_providers.dart';
 
+export 'package:zindagi_plus/providers/report_providers.dart';
+
 /// Provides dashboard summary data, merging real Supabase profile/medication
 /// data with mock values for fields not yet backed by a DB (healthScore,
 /// recentInsights, lastReport).
-///
-/// Real fields sourced from Supabase:
-/// - `activeMeds`: count of active medications from `public.medications`
-/// - `weight`: from the authenticated user's `public.profiles` row
-/// - `userName`: from the authenticated user's `public.profiles` row
-///
-/// Uses [autoDispose] so the data is re-fetched whenever the user navigates
-/// back to the Dashboard — ensuring freshness without manual invalidation.
 final dashboardDataProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   // Watch auth state so dashboard re-builds when profile changes.
@@ -32,7 +25,6 @@ final dashboardDataProvider =
           medResult.data.where((m) => m.isActive).length;
     }
   }
-
 
   // Weight from the real profile — display as "XX kg" or "—" if not set.
   final weightStr = user?.weightKg != null
@@ -63,17 +55,6 @@ final mealRecommendationsProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final repo = ref.read(healthRepositoryProvider);
   final result = await repo.getMealRecommendations();
-  return switch (result) {
-    Success(data: final d) => d,
-    Failure(message: final m) => throw Exception(m),
-  };
-});
-
-/// Provides the lab report history list.
-final reportHistoryProvider =
-    FutureProvider.autoDispose<List<LabReport>>((ref) async {
-  final repo = ref.read(labReportRepositoryProvider);
-  final result = await repo.getReportHistory();
   return switch (result) {
     Success(data: final d) => d,
     Failure(message: final m) => throw Exception(m),

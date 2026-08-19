@@ -13,10 +13,7 @@ class AccountManagementScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Account Management'),
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/settings'),
       ),
       body: SafeArea(
         child: ListView(

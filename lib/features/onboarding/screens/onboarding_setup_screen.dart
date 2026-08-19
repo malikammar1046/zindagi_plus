@@ -138,8 +138,7 @@ class _OnboardingSetupScreenState extends ConsumerState<OnboardingSetupScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: obState.currentStep > 0
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            ? AppBackButton(
                 onPressed: () =>
                     ref.read(onboardingProvider.notifier).previousStep(),
               )

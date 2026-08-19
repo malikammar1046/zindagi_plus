@@ -42,7 +42,7 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen>
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        leading: const AppBackButton(fallbackLocation: '/dashboard'),
         title: const Text('Medications'),
         actions: [
           IconButton(

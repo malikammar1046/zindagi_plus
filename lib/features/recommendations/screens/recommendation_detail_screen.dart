@@ -155,10 +155,7 @@ class _RecommendationDetailScreenState
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/dashboard'),
         actions: [
           // Type badge
           Container(

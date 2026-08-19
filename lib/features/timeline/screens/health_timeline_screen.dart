@@ -186,10 +186,7 @@ class _HealthTimelineScreenState extends State<HealthTimelineScreen>
 
     return Scaffold(
       appBar: AppBar(
-        leading: GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/dashboard'),
         title: const Text('Health Timeline'),
       ),
       body: Column(

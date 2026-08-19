@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
+import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 // ── Design system constants ────────────────────────────────────────────────────
 const _kEmerald = Color(0xFF00674F);
@@ -36,11 +38,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(
         backgroundColor: _kBg,
         scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19),
-          onPressed: () => context.pop(),
-          color: _kText,
-        ),
+        leading: const AppBackButton(fallbackLocation: '/profile'),
         title: const Text(
           'Settings',
           style: TextStyle(color: _kText, fontWeight: FontWeight.w700),
@@ -242,6 +240,60 @@ class _MiniProfileCard extends StatelessWidget {
     final name = user?.name ?? 'User';
     final email = user?.email ?? '';
 
+    Widget buildAvatar() {
+      final photoUrl = user?.photoUrl;
+      if (photoUrl != null && photoUrl.isNotEmpty) {
+        final isNetwork =
+            photoUrl.startsWith('http://') || photoUrl.startsWith('https://');
+        if (isNetwork) {
+          return Image.network(
+            photoUrl,
+            width: 52,
+            height: 52,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Center(
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  fontSize: 22,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          );
+        } else {
+          return Image.file(
+            File(photoUrl),
+            width: 52,
+            height: 52,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Center(
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  fontSize: 22,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          );
+        }
+      }
+
+      return Center(
+        child: Text(
+          initials,
+          style: const TextStyle(
+            fontSize: 22,
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -269,15 +321,8 @@ class _MiniProfileCard extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
             ),
-            child: Center(
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  fontSize: 22,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+            child: ClipOval(
+              child: buildAvatar(),
             ),
           ),
           const SizedBox(width: 14),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zindagi_plus/data/models/lab_report.dart';
-import 'package:zindagi_plus/providers/health_providers.dart';
+import 'package:zindagi_plus/providers/report_providers.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class ReportHistoryScreen extends ConsumerWidget {
@@ -15,10 +15,7 @@ class ReportHistoryScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Reports'),
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/upload'),
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -63,14 +60,26 @@ class _ReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
     final dateStr = _formatDate(report.uploadedAt);
+
+    final (statusLabel, statusColor) = switch (report.status) {
+      ReportStatus.completed => ('Completed', colorScheme.primary),
+      ReportStatus.processing => ('Processing', Colors.orange),
+      ReportStatus.failed => ('Failed', colorScheme.error),
+      ReportStatus.uploaded => ('Uploaded', Colors.blue),
+    };
+
+    final subtitleText = report.isFailed
+        ? 'OCR text extraction failed · Tap to retry'
+        : report.hasExtractedText
+            ? '${report.extractedText.length} chars extracted · ${report.biomarkerCount > 0 ? "${report.biomarkerCount} biomarkers" : "Raw OCR ready"}'
+            : 'Processing document...';
 
     return AppCard(
       padding: const EdgeInsets.all(16),
       onTap: () => context.push(
         '/upload/result',
-        extra: {'reportId': report.reportId, 'fileName': report.fileName},
+        extra: {'reportId': report.id, 'fileName': report.fileName},
       ),
       child: Row(
         children: [
@@ -79,12 +88,14 @@ class _ReportCard extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.1),
+              color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
-              Icons.biotech_outlined,
-              color: colorScheme.primary,
+              report.isFailed
+                  ? Icons.error_outline_rounded
+                  : Icons.document_scanner_outlined,
+              color: statusColor,
               size: 24,
             ),
           ),
@@ -106,10 +117,14 @@ class _ReportCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${report.biomarkerCount} biomarkers · ${report.attentionCount} need attention',
+                  subtitleText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: report.isFailed
+                        ? colorScheme.error
+                        : colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -129,17 +144,16 @@ class _ReportCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'Processed',
+                  statusLabel,
                   style: TextStyle(
                     fontSize: 10,
-                    color: colorScheme.primary,
+                    color: statusColor,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

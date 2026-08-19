@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
@@ -77,6 +78,28 @@ class AuthNotifier extends StateNotifier<User?> {
         return Success(freshUser);
       case Failure(message: final msg):
         debugPrint('[AuthNotifier.updateProfile] Failed: $msg');
+        return Failure(msg);
+    }
+  }
+
+  /// Uploads a profile image for the authenticated user and refreshes local auth state.
+  Future<Result<User>> uploadProfilePhoto(File imageFile) async {
+    if (_authRepo == null) {
+      if (state != null) {
+        final updated = state!.copyWith(photoUrl: imageFile.path);
+        state = updated;
+        return Success(updated);
+      }
+      return const Failure('No user session.');
+    }
+
+    final result = await _authRepo.uploadProfilePhoto(imageFile);
+    switch (result) {
+      case Success(data: final freshUser):
+        state = freshUser;
+        return Success(freshUser);
+      case Failure(message: final msg):
+        debugPrint('[AuthNotifier.uploadProfilePhoto] Failed: $msg');
         return Failure(msg);
     }
   }

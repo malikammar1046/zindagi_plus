@@ -120,10 +120,7 @@ class _EmailVerificationScreenState
 
     return Scaffold(
       appBar: AppBar(
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/login'),
       ),
       body: SafeArea(
         child: ListView(

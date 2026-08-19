@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthState, OtpType;
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/user.dart';
@@ -116,6 +117,17 @@ class AuthRepositoryMock implements AuthRepository {
     // Mock: update in-memory user, preserve onboarding status.
     _currentUser = user.copyWith(
       isOnboardingCompleted: _currentUser?.isOnboardingCompleted ?? false,
+    );
+    return Success(_currentUser!);
+  }
+
+  @override
+  Future<Result<User>> uploadProfilePhoto(File imageFile) async {
+    if (_currentUser == null) {
+      return const Failure('No active session');
+    }
+    _currentUser = _currentUser!.copyWith(
+      photoUrl: imageFile.path,
     );
     return Success(_currentUser!);
   }

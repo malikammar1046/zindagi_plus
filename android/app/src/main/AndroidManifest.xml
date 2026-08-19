@@ -7,7 +7,7 @@
 
     <application
         android:label="Zindagi+"
-
+        android:enableOnBackInvokedCallback="true"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

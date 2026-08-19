@@ -12,10 +12,7 @@ class ReportExplanationScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Explanation'),
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        ),
+        leading: const AppBackButton(fallbackLocation: '/upload/result'),
       ),
       body: SafeArea(
         child: ListView(
