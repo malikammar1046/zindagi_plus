@@ -126,7 +126,37 @@ class LabReportRepositorySupabase implements LabReportRepository {
     if (authCheck is Failure<String>) return Failure(authCheck.message);
     final userId = (authCheck as Success<String>).data;
 
+    File? tempDownloadedFile;
     try {
+      String effectivePath = filePath;
+
+      // If local file is missing, download original file from Supabase Storage
+      if (effectivePath.isEmpty || !File(effectivePath).existsSync()) {
+        debugPrint('[OCR] Local file at "$filePath" not found. Downloading from Supabase Storage...');
+        try {
+          final reportRow = await _client
+              .from('lab_reports')
+              .select('storage_path, file_name')
+              .eq('id', reportId)
+              .eq('user_id', userId)
+              .single();
+
+          final storagePath = reportRow['storage_path'] as String;
+          final fileName = reportRow['file_name'] as String? ?? 'report.jpg';
+          final fileBytes = await _client.storage.from('reports').download(storagePath);
+
+          final tempDir = Directory.systemTemp;
+          final tempFile = File('${tempDir.path}/ocr_${reportId}_$fileName');
+          await tempFile.writeAsBytes(fileBytes);
+          effectivePath = tempFile.path;
+          tempDownloadedFile = tempFile;
+          debugPrint('[OCR] Downloaded storage file to temp path: $effectivePath (${fileBytes.length} bytes)');
+        } catch (downloadErr, downloadStack) {
+          _logDbError('processReport.storageDownload', downloadErr, downloadStack);
+          return Failure('Could not retrieve uploaded report file for OCR: ${_mapDbError(downloadErr)}');
+        }
+      }
+
       // 1. Update status to 'processing'
       try {
         await _client.from('lab_reports').update({
@@ -137,26 +167,16 @@ class LabReportRepositorySupabase implements LabReportRepository {
         return Failure('Failed to update report status: ${_mapDbError(dbUpdateError)}');
       }
 
-      // 2. Run OCR text extraction via dedicated OcrService
-      final ocrResult = await _ocrService.extractText(filePath);
+      // 2. Run OCR text extraction via dedicated OcrService (MlKitOcrService on Android)
+      final ocrResult = await _ocrService.extractText(effectivePath);
 
       if (ocrResult is Success<String>) {
         final extractedRawText = ocrResult.data;
 
-        // 3a. Parse biomarkers from extracted text (deterministic, never throws)
-        final biomarkers = LabReportParser.parse(extractedRawText);
-        debugPrint('[OCR] Parsed ${biomarkers.length} biomarker(s) from extracted text.');
+        debugPrint('[OCR] Text returned by ML Kit: ${extractedRawText.length} chars');
+        debugPrint('[OCR] Text being saved to database: ${extractedRawText.length} chars');
 
-        // 3b. Persist biomarkers (non-fatal if this fails)
-        if (biomarkers.isNotEmpty) {
-          try {
-            await saveBiomarkers(reportId, userId, biomarkers);
-          } catch (bmErr) {
-            debugPrint('[OCR] saveBiomarkers non-fatal error: $bmErr');
-          }
-        }
-
-        // 3c. Successful extraction -> update status to 'completed'
+        // 3a. Save exact raw OCR text & update status to 'completed'
         try {
           final updateResponse = await _client
               .from('lab_reports')
@@ -165,14 +185,14 @@ class LabReportRepositorySupabase implements LabReportRepository {
                 'extracted_text': extractedRawText,
                 'processed_at': DateTime.now().toUtc().toIso8601String(),
                 'error_message': null,
-                'biomarker_count': biomarkers.length,
+                'biomarker_count': 0,
               })
               .eq('id', reportId)
               .eq('user_id', userId)
               .select()
               .single();
 
-          debugPrint('[OCR] Processing completed successfully for report ID: $reportId (${extractedRawText.length} chars, ${biomarkers.length} biomarkers)');
+          debugPrint('[OCR] Processing completed successfully for report ID: $reportId (${extractedRawText.length} chars saved to database)');
           return Success(LabReport.fromJson(updateResponse));
         } catch (dbCompleteError, dbCompleteStack) {
           _logDbError('processReport.saveExtractedText', dbCompleteError, dbCompleteStack);
@@ -180,9 +200,9 @@ class LabReportRepositorySupabase implements LabReportRepository {
         }
       } else {
         final errorMessage = (ocrResult as Failure<String>).message;
-        debugPrint('[OCR] ML Kit extraction failed for report ID $reportId');
+        debugPrint('[OCR] ML Kit extraction failed for report ID $reportId: $errorMessage');
 
-        // 3b. OCR Failure -> update status to 'failed', preserve original file
+        // 3b. OCR Failure -> update status to 'failed', preserve original file, do NOT use mock fallback
         try {
           await _client
               .from('lab_reports')
@@ -212,6 +232,12 @@ class LabReportRepositorySupabase implements LabReportRepository {
       } catch (_) {}
 
       return Failure('Report processing failed: ${_mapDbError(e)}');
+    } finally {
+      if (tempDownloadedFile != null && tempDownloadedFile.existsSync()) {
+        try {
+          await tempDownloadedFile.delete();
+        } catch (_) {}
+      }
     }
   }
 

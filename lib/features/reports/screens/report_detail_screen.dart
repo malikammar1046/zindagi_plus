@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zindagi_plus/data/models/lab_report.dart';
+import 'package:zindagi_plus/data/models/structured_lab_report.dart';
 import 'package:zindagi_plus/providers/report_providers.dart';
-import 'package:zindagi_plus/services/lab_report_parser.dart';
+import 'package:zindagi_plus/services/ocr/ocr_layout_reconstructor.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
 class ReportDetailScreen extends ConsumerWidget {
@@ -59,6 +60,8 @@ class ReportDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildDetailContent(BuildContext context, WidgetRef ref, LabReport report) {
+    final structuredReport = OcrLayoutReconstructor.parse(report.extractedText);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       children: [
@@ -71,69 +74,40 @@ class ReportDetailScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
 
-        // ── Important Health Parameters Section (ABOVE Raw OCR Text) ─────────
-        _ImportantHealthParametersCard(report: report),
+        // ── Structured Extracted Lab Results Section ─────────────────────────
+        _StructuredLabResultsCard(
+          report: report,
+          structuredReport: structuredReport,
+        ),
         const SizedBox(height: 16),
 
-        // ── Extracted OCR Raw Text Section (Below) ───────────────────────────
-        _ExtractedTextCard(report: report),
+        // ── Raw OCR Text Section (Auditability & Transparency) ────────────────
+        _ExtractedTextCard(
+          report: report,
+          initiallyExpanded: !structuredReport.hasStructuredData,
+        ),
         const SizedBox(height: 16),
       ],
     );
   }
 }
 
-// ── Important Health Parameters Card ─────────────────────────────────────────
+// ── Structured Lab Results Card ───────────────────────────────────────────────
 
-class _ImportantHealthParametersCard extends ConsumerWidget {
-  const _ImportantHealthParametersCard({required this.report});
+class _StructuredLabResultsCard extends StatelessWidget {
+  const _StructuredLabResultsCard({
+    required this.report,
+    required this.structuredReport,
+  });
+
   final LabReport report;
+  final StructuredLabReport structuredReport;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
-    // Load from database if persisted; fallback to parsing extractedText directly.
-    final biomarkersAsync = ref.watch(reportBiomarkersProvider(report.id));
-
-    return biomarkersAsync.when(
-      loading: () => _buildCard(
-        context,
-        colorScheme,
-        _resolveBiomarkers(null),
-        isLoading: true,
-      ),
-      error: (e, _) => _buildCard(
-        context,
-        colorScheme,
-        _resolveBiomarkers(null),
-      ),
-      data: (dbBiomarkers) => _buildCard(
-        context,
-        colorScheme,
-        _resolveBiomarkers(dbBiomarkers),
-      ),
-    );
-  }
-
-  List<ParsedBiomarker> _resolveBiomarkers(List<ParsedBiomarker>? dbList) {
-    if (dbList != null && dbList.isNotEmpty) {
-      return dbList;
-    }
-    if (report.hasExtractedText) {
-      return LabReportParser.parse(report.extractedText);
-    }
-    return [];
-  }
-
-  Widget _buildCard(
-    BuildContext context,
-    ColorScheme colorScheme,
-    List<ParsedBiomarker> biomarkers, {
-    bool isLoading = false,
-  }) {
-    final hasParameters = biomarkers.isNotEmpty;
+    final hasData = structuredReport.hasStructuredData;
 
     return AppCard(
       padding: const EdgeInsets.all(18),
@@ -149,7 +123,7 @@ class _ImportantHealthParametersCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  Icons.biotech_rounded,
+                  Icons.table_chart_rounded,
                   color: colorScheme.primary,
                   size: 22,
                 ),
@@ -160,7 +134,7 @@ class _ImportantHealthParametersCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Important Health Parameters',
+                      'Extracted Lab Results',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -169,11 +143,11 @@ class _ImportantHealthParametersCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      hasParameters
-                          ? '${biomarkers.length} parameter${biomarkers.length == 1 ? "" : "s"} extracted'
+                      hasData
+                          ? '${structuredReport.totalRowCount} parameter${structuredReport.totalRowCount == 1 ? "" : "s"} extracted'
                           : (report.isFailed
-                              ? 'OCR extraction failed'
-                              : 'No parameters found'),
+                              ? 'OCR text extraction failed'
+                              : 'Layout reconstructed from scan'),
                       style: TextStyle(
                         fontSize: 12,
                         color: colorScheme.onSurface.withValues(alpha: 0.6),
@@ -182,75 +156,207 @@ class _ImportantHealthParametersCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (isLoading)
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
             ],
           ),
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 14),
 
-          if (hasParameters) ...[
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: biomarkers.length,
-              separatorBuilder: (_, _) => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Divider(height: 1, thickness: 0.5),
-              ),
-              itemBuilder: (ctx, index) {
-                final bm = biomarkers[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+          if (hasData) ...[
+            for (final section in structuredReport.sections) ...[
+              if (structuredReport.sections.length > 1 || section.title != 'Extracted Lab Results') ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 8),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      Container(
+                        width: 4,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          bm.name,
+                          section.title,
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.primary,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            bm.value % 1 == 0
-                                ? bm.value.toInt().toString()
-                                : bm.value.toString(),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Table Headers
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Row(
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: Text(
+                        'Parameter',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        'Result',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    SizedBox(width: 6),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        'Unit',
+                        textAlign: TextAlign.left,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        'Reference',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+
+              // Rows
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: section.rows.length,
+                separatorBuilder: (_, _) => const Divider(height: 1, thickness: 0.5),
+                itemBuilder: (ctx, rIndex) {
+                  final row = section.rows[rIndex];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Parameter Name
+                        Expanded(
+                          flex: 5,
+                          child: Text(
+                            row.parameterName,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                        // Result Value
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            row.result,
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: colorScheme.primary,
                             ),
                           ),
-                          if (bm.unit.isNotEmpty) ...[
-                            const SizedBox(width: 4),
-                            Text(
-                              bm.unit,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                        const SizedBox(width: 6),
+                        // Unit
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            row.unit ?? '—',
+                            textAlign: TextAlign.left,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: colorScheme.onSurface.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ),
+                        // Reference Range
+                        Expanded(
+                          flex: 4,
+                          child: Text(
+                            row.referenceRange ?? '—',
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colorScheme.onSurface.withValues(alpha: 0.55),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Additional Document Details
+            if (structuredReport.unclassifiedLines.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Theme(
+                data: theme.copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(top: 8),
+                  title: Text(
+                    'Additional Document Notes (${structuredReport.unclassifiedLines.length})',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final line in structuredReport.unclassifiedLines)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                line,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: colorScheme.onSurface.withValues(alpha: 0.75),
+                                ),
                               ),
                             ),
-                          ],
                         ],
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ] else ...[
             Container(
               padding: const EdgeInsets.all(12),
@@ -268,7 +374,9 @@ class _ImportantHealthParametersCard extends ConsumerWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'No recognizable laboratory parameters were found. Please upload a clearer report image.',
+                      report.isCompleted
+                          ? 'Document text is available in the Raw OCR section below.'
+                          : 'Report is still being processed.',
                       style: TextStyle(
                         fontSize: 12,
                         height: 1.4,
@@ -286,19 +394,29 @@ class _ImportantHealthParametersCard extends ConsumerWidget {
   }
 }
 
-
-// ── Extracted OCR Text Card ──────────────────────────────────────────────────
+// ── Extracted OCR Raw Text Card ──────────────────────────────────────────────
 
 class _ExtractedTextCard extends StatefulWidget {
-  const _ExtractedTextCard({required this.report});
+  const _ExtractedTextCard({
+    required this.report,
+    this.initiallyExpanded = true,
+  });
+
   final LabReport report;
+  final bool initiallyExpanded;
 
   @override
   State<_ExtractedTextCard> createState() => _ExtractedTextCardState();
 }
 
 class _ExtractedTextCardState extends State<_ExtractedTextCard> {
-  bool _expanded = true;
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = widget.initiallyExpanded;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +454,7 @@ class _ExtractedTextCardState extends State<_ExtractedTextCard> {
                       runSpacing: 4,
                       children: [
                         Text(
-                          'Extracted OCR Text',
+                          'Raw OCR Text',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -418,7 +536,7 @@ class _ExtractedTextCardState extends State<_ExtractedTextCard> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Medical Disclaimer: This is uninterpreted raw OCR text. No diagnostic claims have been applied.',
+                      'Original uninterpreted raw text output from on-device Google ML Kit Text Recognition.',
                       style: TextStyle(
                         fontSize: 11,
                         color: colorScheme.onSurface.withValues(alpha: 0.65),

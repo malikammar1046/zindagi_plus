@@ -131,19 +131,17 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Lab Report Detail'), findsOneWidget);
-      expect(find.text('Important Health Parameters'), findsOneWidget);
+      expect(find.text('Extracted Lab Results'), findsOneWidget);
 
       await tester.scrollUntilVisible(
-        find.text('Extracted OCR Text'),
+        find.text('Raw OCR Text'),
         300,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Extracted OCR Text'), findsOneWidget);
-      expect(find.textContaining('Medical Disclaimer: This is uninterpreted raw OCR text'), findsOneWidget);
-      expect(find.textContaining('CHUGHTAI LAB'), findsOneWidget);
-      expect(find.textContaining('COMPLETE BLOOD COUNT'), findsOneWidget);
+      expect(find.text('Raw OCR Text'), findsOneWidget);
+      expect(find.textContaining('COMPLETE BLOOD COUNT'), findsWidgets);
       expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
     });
   });

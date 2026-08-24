@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:zindagi_plus/core/network/result.dart';
+import 'package:zindagi_plus/services/ocr/ocr_layout_reconstructor.dart';
 import 'package:zindagi_plus/services/ocr/ocr_service.dart';
 
 /// Production on-device OCR engine using Google ML Kit Text Recognition.
@@ -36,81 +37,92 @@ class MlKitOcrService implements OcrService {
 
   @override
   Future<Result<String>> extractText(String filePath) async {
-    debugPrint('[OCR-DIAG] ══════════════════════════════════════════');
-    debugPrint('[OCR-DIAG] extractText() called');
-    debugPrint('[OCR-DIAG] filePath        : $filePath');
-    debugPrint('[OCR-DIAG] isContentUri    : ${filePath.startsWith('content://')}');
+    final platformName = defaultTargetPlatform.name;
+    final isContentUri = filePath.startsWith('content://');
+    bool fileExists = false;
+    int fileSizeBytes = 0;
 
-    // File system diagnostics (skip for content URIs)
-    if (!filePath.startsWith('content://')) {
+    if (!isContentUri) {
       final f = File(filePath);
-      debugPrint('[OCR-DIAG] file.existsSync: ${f.existsSync()}');
-      if (f.existsSync()) {
-        debugPrint('[OCR-DIAG] file.lengthSync: ${f.lengthSync()} bytes');
+      fileExists = f.existsSync();
+      if (fileExists) {
+        fileSizeBytes = f.lengthSync();
       }
     }
 
-    // Extension detection
     final lastSegment = filePath.split('/').last.split('?').first;
     final ext = lastSegment.contains('.')
         ? lastSegment.split('.').last.toLowerCase()
         : '(unknown)';
-    debugPrint('[OCR-DIAG] detected ext    : $ext');
+
+    debugPrint('════════════════════════════════════════════════════════════');
+    debugPrint('[OCR] Service: MlKitOcrService');
+    debugPrint('[OCR] Platform: $platformName');
+    debugPrint('[OCR] File: $filePath');
+    debugPrint('[OCR] Exists: $fileExists');
+    debugPrint('[OCR] Size: $fileSizeBytes bytes');
+    debugPrint('[OCR] Extension: $ext');
+    debugPrint('[OCR] Starting Google ML Kit text recognition...');
+    debugPrint('════════════════════════════════════════════════════════════');
 
     // 1. Pre-validation
-    final validation = validateFile(filePath);
-    debugPrint('[OCR-DIAG] validation      : ${validation is Success ? "PASS" : "FAIL — ${(validation as Failure).message}"}');
+    final validation = validateFile(filePath, fileSizeBytes: fileSizeBytes > 0 ? fileSizeBytes : null);
     if (validation is Failure<bool>) {
+      debugPrint('[OCR] Pre-validation FAILED: ${validation.message}');
       return OcrFailure(validation.message, code: OcrErrorCode.imageUnreadable);
     }
 
     try {
       // 2. InputImage creation
-      debugPrint('[OCR-DIAG] Creating InputImage...');
       final InputImage inputImage;
       try {
         inputImage = InputImage.fromFilePath(filePath);
-        debugPrint('[OCR-DIAG] InputImage created OK');
       } catch (e, st) {
-        debugPrint('[OCR-DIAG] InputImage creation FAILED: ${e.runtimeType}: $e');
-        debugPrint('[OCR-DIAG] $st');
+        debugPrint('[OCR] InputImage creation FAILED: $e\n$st');
         return OcrFailure(
-          'Could not load image from path. ${_classifyError(e)}',
+          'Could not load image file into ML Kit. ${_classifyError(e)}',
           code: OcrErrorCode.imageUnreadable,
         );
       }
 
-      // 3. TextRecognizer initialization (lazy)
-      debugPrint('[OCR-DIAG] Getting _lazyRecognizer (script=$script)...');
+      // 3. TextRecognizer execution
       final recognizer = _lazyRecognizer;
-      debugPrint('[OCR-DIAG] TextRecognizer ready: $recognizer');
-
-      // 4. processImage
-      debugPrint('[OCR-DIAG] Calling processImage()...');
       final RecognizedText recognized;
       try {
         recognized = await recognizer.processImage(inputImage);
       } catch (e, st) {
-        debugPrint('[OCR-DIAG] processImage() FAILED: ${e.runtimeType}: $e');
-        debugPrint('[OCR-DIAG] $st');
+        debugPrint('[OCR] ML Kit processImage FAILED: $e\n$st');
         return OcrFailure(_classifyError(e), code: _errorCode(e));
       }
 
-      debugPrint('[OCR-DIAG] processImage() OK');
-      debugPrint('[OCR-DIAG] blocks         : ${recognized.blocks.length}');
-      debugPrint('[OCR-DIAG] total text len : ${recognized.text.length}');
-      if (recognized.blocks.isNotEmpty) {
-        // Safe preview: first 120 chars only
-        final previewLen = recognized.text.length.clamp(0, 120);
-        final preview = recognized.text.substring(0, previewLen).replaceAll('\n', ' ');
-        debugPrint('[OCR-DIAG] text preview    : $preview...');
+      // Collect all TextLines from all TextBlocks
+      final allLines = <TextLine>[];
+      for (final block in recognized.blocks) {
+        allLines.addAll(block.lines);
       }
-      debugPrint('[OCR-DIAG] ══════════════════════════════════════════');
 
-      final rawText = recognized.text.trim();
+      // Reconstruct 2D visual layout using bounding-box spatial coordinates
+      final String rawText;
+      if (allLines.isNotEmpty) {
+        final spatiallyOrdered = OcrLayoutReconstructor.reconstructFromMlKitLines(allLines);
+        rawText = spatiallyOrdered.isNotEmpty ? spatiallyOrdered : recognized.text.trim();
+      } else {
+        rawText = recognized.text.trim();
+      }
+
+      debugPrint('════════════════════════════════════════════════════════════');
+      debugPrint('[OCR] Recognition completed');
+      debugPrint('[OCR] Character count: ${rawText.length}');
+      debugPrint('[OCR] Blocks count: ${recognized.blocks.length}');
+      debugPrint('[OCR] Lines count: ${allLines.length}');
+      debugPrint('[OCR] Spatially Reconstructed Raw text:');
+      debugPrint('----------------------------------------');
+      debugPrint(rawText);
+      debugPrint('----------------------------------------');
+      debugPrint('════════════════════════════════════════════════════════════');
 
       if (rawText.isEmpty) {
-        debugPrint('[OCR-DIAG] RESULT: noTextFound');
+        debugPrint('[OCR] RESULT: No legible text recognized in image.');
         return const OcrFailure(
           'No legible text could be recognized in the image. '
           'Please ensure the document is clear, well-lit, and in focus.',
@@ -118,12 +130,9 @@ class MlKitOcrService implements OcrService {
         );
       }
 
-      debugPrint('[OCR-DIAG] RESULT: SUCCESS (${rawText.length} chars, ${recognized.blocks.length} blocks)');
       return Success(rawText);
     } catch (e, stack) {
-      debugPrint('[OCR-DIAG] UNEXPECTED exception: ${e.runtimeType}: $e');
-      debugPrint('[OCR-DIAG] $stack');
-      debugPrint('[OCR-DIAG] ══════════════════════════════════════════');
+      debugPrint('[OCR] Unexpected exception during recognition: $e\n$stack');
       return OcrFailure(_classifyError(e), code: _errorCode(e));
     }
   }

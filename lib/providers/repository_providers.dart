@@ -23,16 +23,23 @@ import 'package:zindagi_plus/services/ocr/ocr_service.dart';
 
 /// Provides the active [OcrService] implementation.
 ///
-/// Uses [MlKitOcrService] for on-device native OCR on mobile devices.
-/// Falls back to [MockOcrService] in mock flavor, testing, or unsupported desktop environments.
+/// Uses [MlKitOcrService] for on-device native OCR on mobile devices (Android / iOS).
+/// Falls back to [MockOcrService] only on non-mobile host environments (desktop, web, unit tests).
 final ocrServiceProvider = Provider<OcrService>((ref) {
   final isMobile = !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS);
 
-  if (!Environment.isMock && isMobile) {
+  debugPrint(
+    '[OCR-DIAG] ocrServiceProvider resolving -> isMobile=$isMobile, platform=$defaultTargetPlatform, flavor=${Environment.currentFlavor}',
+  );
+
+  if (isMobile) {
+    debugPrint('[OCR-DIAG] ocrServiceProvider -> Instantiating MlKitOcrService');
     return MlKitOcrService();
   }
+
+  debugPrint('[OCR-DIAG] ocrServiceProvider -> Instantiating MockOcrService (non-mobile host)');
   return MockOcrService();
 });
 
