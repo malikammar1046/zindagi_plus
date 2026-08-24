@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:zindagi_plus/data/models/medication.dart';
 
@@ -34,15 +34,19 @@ class NotificationService {
   Stream<String> get onNotificationTap => _tapController.stream;
 
   bool _isInitialized = false;
+  Future<void>? _initFuture;
   String _detectedTimezone = 'UTC';
 
   /// Returns the detected device local timezone.
   String get detectedTimezone => _detectedTimezone;
 
   /// Initializes the local notification plugin and local timezone database.
-  Future<void> initialize() async {
-    if (_isInitialized) return;
+  Future<void> initialize() {
+    if (_isInitialized) return Future.value();
+    return _initFuture ??= _performInitialize();
+  }
 
+  Future<void> _performInitialize() async {
     try {
       // 1. Initialize timezone database dynamically
       tz.initializeTimeZones();
@@ -110,10 +114,12 @@ class NotificationService {
       debugPrint('[NotificationService] Initialized successfully.');
     } catch (e, st) {
       debugPrint('[NotificationService] Initialization error: $e\n$st');
+    } finally {
+      _initFuture = null;
     }
   }
 
-  /// Requests notification permissions on Android 13+ and requests exact alarm permission.
+  /// Requests notification permissions on Android 13+ and iOS.
   Future<bool> requestPermissions() async {
     try {
       final androidPlugin = _notifications
@@ -126,15 +132,9 @@ class NotificationService {
         debugPrint(
           '[NotificationService] Android POST_NOTIFICATIONS permission: $postGranted',
         );
-
-        final exactGranted =
-            await androidPlugin.requestExactAlarmsPermission();
-        debugPrint(
-          '[NotificationService] Android requestExactAlarmsPermission: $exactGranted',
-        );
-
         return postGranted ?? false;
       }
+
 
       final iosPlugin = _notifications
           .resolvePlatformSpecificImplementation<
@@ -152,6 +152,20 @@ class NotificationService {
       debugPrint('[NotificationService] Error requesting permissions: $e');
     }
     return false;
+  }
+
+  /// Checks / requests whether exact alarm scheduling is allowed on Android 13+.
+  Future<bool> checkExactAlarmPermission() async {
+    try {
+      final androidPlugin = _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (androidPlugin != null) {
+        return await androidPlugin.requestExactAlarmsPermission() ?? false;
+      }
+    } catch (_) {}
+    return true;
   }
 
   /// Generates a stable positive 31-bit notification ID from a medication string ID.
@@ -319,12 +333,22 @@ class NotificationService {
 
   /// Re-syncs all active medications to ensure reminder schedules are up to date.
   Future<void> rescheduleAll(List<Medication> activeMeds) async {
-    for (final med in activeMeds) {
-      if (med.isActive) {
-        await scheduleMedicationReminder(med);
-      } else {
-        await cancelMedicationReminder(med.id);
+    final sw = Stopwatch()..start();
+    debugPrint('[TRACE] NotificationService.rescheduleAll START for ${activeMeds.length} meds');
+    try {
+      for (final med in activeMeds) {
+        if (med.isActive) {
+          await scheduleMedicationReminder(med);
+        } else {
+          await cancelMedicationReminder(med.id);
+        }
       }
+    } catch (e, st) {
+      debugPrint('[NotificationService] rescheduleAll error: $e\n$st');
+    } finally {
+      sw.stop();
+      debugPrint('[TRACE] NotificationService.rescheduleAll END duration=${sw.elapsedMilliseconds}ms');
     }
   }
 }
+

@@ -9,19 +9,20 @@ import 'package:zindagi_plus/routes/app_router.dart';
 import 'package:zindagi_plus/services/notification_service.dart';
 
 Future<void> main() async {
+  debugPrint('[STARTUP-01] main() entered');
   WidgetsFlutterBinding.ensureInitialized();
+  debugPrint('[STARTUP-02] WidgetsFlutterBinding initialized');
 
   if (Environment.isSupabaseConfigured) {
+    debugPrint('[STARTUP-03] Initializing Supabase...');
     await Supabase.initialize(
       url: Environment.supabaseUrl,
       publishableKey: Environment.supabasePublishableKey,
     );
+    debugPrint('[STARTUP-04] Supabase initialized');
   }
 
-  // Initialize local medication notifications
-  await NotificationService.instance.initialize();
-  await NotificationService.instance.requestPermissions();
-
+  debugPrint('[STARTUP-05] Calling runApp()');
   runApp(const ProviderScope(child: ZindagiApp()));
 }
 
@@ -41,7 +42,15 @@ class _ZindagiAppState extends ConsumerState<ZindagiApp>
   @override
   void initState() {
     super.initState();
+    debugPrint('[STARTUP-APP-01] ZindagiApp initState()');
     WidgetsBinding.instance.addObserver(this);
+
+    // Initialize local notification service safely after first frame paint
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.instance.initialize().then((_) {
+        debugPrint('[STARTUP-NOTIF] NotificationService initialized post-frame');
+      });
+    });
 
     // Listen for notification taps to route user to the medication screen
     _notificationSub = NotificationService.instance.onNotificationTap.listen((
@@ -65,13 +74,16 @@ class _ZindagiAppState extends ConsumerState<ZindagiApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint('[ZindagiApp] App resumed — reconciling missed doses...');
-      ref.read(medicationProvider.notifier).reconcileMissedDoses();
+      debugPrint('[LIFECYCLE-RESUME] App resumed — reconciling missed doses (throttled & async)...');
+      Future.microtask(() {
+        ref.read(medicationProvider.notifier).reconcileMissedDoses();
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[STARTUP-APP-02] ZindagiApp build()');
     final router = ref.watch(goRouterProvider);
 
     return MaterialApp.router(

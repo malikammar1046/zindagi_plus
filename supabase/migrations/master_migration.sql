@@ -743,3 +743,64 @@ SELECT
     rec.priority::TEXT AS status
 FROM public.ai_recommendations rec
 WHERE rec.priority = 'high';
+
+-- ----------------------------------------------------------------------------
+-- Migration 020: Grants & RLS for Medications and Medication Dose Logs
+-- ----------------------------------------------------------------------------
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.medications TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.medication_dose_logs TO authenticated;
+
+ALTER TABLE public.medications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.medication_dose_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "medications_select_own" ON public.medications;
+DROP POLICY IF EXISTS "medications_insert_own" ON public.medications;
+DROP POLICY IF EXISTS "medications_update_own" ON public.medications;
+DROP POLICY IF EXISTS "medications_delete_own" ON public.medications;
+
+CREATE POLICY "medications_select_own" ON public.medications
+    FOR SELECT TO authenticated
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "medications_insert_own" ON public.medications
+    FOR INSERT TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "medications_update_own" ON public.medications
+    FOR UPDATE TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "medications_delete_own" ON public.medications
+    FOR DELETE TO authenticated
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "dose_logs_select_own" ON public.medication_dose_logs;
+DROP POLICY IF EXISTS "dose_logs_insert_own" ON public.medication_dose_logs;
+DROP POLICY IF EXISTS "dose_logs_update_own" ON public.medication_dose_logs;
+DROP POLICY IF EXISTS "dose_logs_delete_own" ON public.medication_dose_logs;
+
+CREATE POLICY "dose_logs_select_own" ON public.medication_dose_logs
+    FOR SELECT TO authenticated
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "dose_logs_insert_own" ON public.medication_dose_logs
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        auth.uid() = user_id
+        AND EXISTS (
+            SELECT 1 FROM public.medications m
+            WHERE m.id = medication_id
+              AND m.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "dose_logs_update_own" ON public.medication_dose_logs
+    FOR UPDATE TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "dose_logs_delete_own" ON public.medication_dose_logs
+    FOR DELETE TO authenticated
+    USING (auth.uid() = user_id);
+

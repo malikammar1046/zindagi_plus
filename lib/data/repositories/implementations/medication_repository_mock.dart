@@ -98,23 +98,44 @@ class MedicationRepositoryMock implements MedicationRepository {
 
   @override
   Future<Result<List<Medication>>> getMedications() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return Success(List.unmodifiable(_medications));
+    await Future.delayed(const Duration(milliseconds: 100));
+    final now = DateTime.now();
+
+    final Map<String, MedStatus> loggedToday = {};
+    for (final log in _doseLogs) {
+      if (log.loggedAt.year == now.year &&
+          log.loggedAt.month == now.month &&
+          log.loggedAt.day == now.day) {
+        loggedToday.putIfAbsent(log.medicationId, () => log.status);
+      }
+    }
+
+    final derived = _medications.map((m) {
+      final logged = loggedToday[m.id];
+      final status = Medication.deriveStatus(
+        scheduledTime: m.parsedTimeOfDay,
+        loggedStatus: logged,
+        now: now,
+      );
+      return m.copyWith(status: status);
+    }).toList();
+
+    return Success(List.unmodifiable(derived));
   }
 
   @override
   Future<Result<Medication>> addMedication(Medication medication) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 100));
     _medications.add(medication);
     return Success(medication);
   }
 
   @override
   Future<Result<void>> deleteMedication(String id) async {
-    await Future.delayed(const Duration(milliseconds: 200));
+    await Future.delayed(const Duration(milliseconds: 100));
     final index = _medications.indexWhere((m) => m.id == id);
     if (index == -1) {
-      return const Failure('Medication not found.');
+      return Failure('Medication not found: $id');
     }
     _medications[index] = _medications[index].copyWith(isActive: false);
     return const Success(null);
@@ -122,32 +143,48 @@ class MedicationRepositoryMock implements MedicationRepository {
 
   @override
   Future<Result<DoseLog>> logDose(String medicationId, MedStatus status) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    final med = _medications.firstWhere(
-      (m) => m.id == medicationId,
-      orElse: () => const Medication(
-        id: '',
-        name: 'Unknown',
-        dose: '',
-        time: '',
-        status: MedStatus.pending,
-        note: '',
-      ),
+    await Future.delayed(const Duration(milliseconds: 100));
+    final index = _medications.indexWhere((m) => m.id == medicationId);
+    final med = index != -1
+        ? _medications[index]
+        : const Medication(
+            id: '',
+            name: 'Unknown',
+            dose: '',
+            time: '',
+            status: MedStatus.pending,
+            note: '',
+          );
+
+    final now = DateTime.now();
+    _doseLogs.removeWhere(
+      (log) =>
+          log.medicationId == medicationId &&
+          log.loggedAt.year == now.year &&
+          log.loggedAt.month == now.month &&
+          log.loggedAt.day == now.day,
     );
+
     final log = DoseLog(
       medicationId: medicationId,
       medicationName: med.name,
       dose: med.dose,
       status: status,
-      loggedAt: DateTime.now(),
+      loggedAt: now,
     );
-    _doseLogs.insert(0, log);
+
+    if (status != MedStatus.pending) {
+      _doseLogs.insert(0, log);
+    }
+    if (index != -1) {
+      _medications[index] = med.copyWith(status: status);
+    }
     return Success(log);
   }
 
   @override
   Future<Result<List<DoseLog>>> getDoseHistory() async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 100));
     return Success(List.unmodifiable(_doseLogs));
   }
 
@@ -185,7 +222,7 @@ class MedicationRepositoryMock implements MedicationRepository {
 
       final gracePeriodEnd = scheduledToday.add(const Duration(minutes: 30));
 
-      if (now.isAfter(gracePeriodEnd) || now.isAtSameMomentAs(gracePeriodEnd)) {
+      if (now.isAfter(gracePeriodEnd)) {
         final log = DoseLog(
           medicationId: med.id,
           medicationName: med.name,

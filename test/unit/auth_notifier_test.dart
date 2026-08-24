@@ -129,5 +129,25 @@ void main() {
         expect(state, isNull);
       });
     });
+
+    group('deleteAccount()', () {
+      test('clears user state on successful deletion', () async {
+        const initialUser = User(
+          id: '1',
+          name: 'Ammar',
+          email: 'test@test.com',
+          isOnboardingCompleted: true,
+        );
+        final container = makeContainer(initialUser: initialUser);
+        addTearDown(container.dispose);
+        await Future.microtask(() {});
+
+        final result = await container.read(authNotifierProvider.notifier).deleteAccount();
+
+        expect(result.isSuccess, isTrue);
+        final state = container.read(authNotifierProvider);
+        expect(state, isNull);
+      });
+    });
   });
 }

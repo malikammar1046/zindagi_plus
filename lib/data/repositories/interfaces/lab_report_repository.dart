@@ -1,5 +1,6 @@
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/lab_report.dart';
+import 'package:zindagi_plus/services/lab_report_parser.dart';
 
 /// Contract for the medical lab report data and OCR extraction layer.
 abstract class LabReportRepository {
@@ -31,4 +32,19 @@ abstract class LabReportRepository {
 
   /// Generates a secure, temporary signed download URL for the original report file.
   Future<Result<String>> getReportFileSignedUrl(String storagePath);
+
+  /// Persists structured biomarker measurements parsed from OCR text.
+  ///
+  /// Implementations should batch-insert [biomarkers] into the
+  /// `report_biomarkers` table under [reportId] and [userId].
+  /// On empty list, this is a no-op returning [Success].
+  Future<Result<void>> saveBiomarkers(
+    String reportId,
+    String userId,
+    List<ParsedBiomarker> biomarkers,
+  );
+
+  /// Returns the parsed biomarkers for a given [reportId].
+  Future<Result<List<ParsedBiomarker>>> getBiomarkers(String reportId);
 }
+

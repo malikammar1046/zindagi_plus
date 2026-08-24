@@ -184,6 +184,8 @@ class _HealthTimelineScreenState extends State<HealthTimelineScreen>
   Widget build(BuildContext context) {
     final filtered = _filteredEvents;
 
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(fallbackLocation: '/dashboard'),
@@ -191,6 +193,32 @@ class _HealthTimelineScreenState extends State<HealthTimelineScreen>
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 16, color: colorScheme.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Sample Timeline: Displays chronological events (medications, reports, workouts) populated from your live activity.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurface.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           // ── Period filter ────────────────────────────────────────────
           SizedBox(
             height: 42,

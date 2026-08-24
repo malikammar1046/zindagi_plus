@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zindagi_plus/data/models/user.dart';
 import 'package:zindagi_plus/data/repositories/implementations/auth_repository_mock.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
+import 'package:zindagi_plus/providers/medication_provider.dart';
 import 'package:zindagi_plus/providers/repository_providers.dart';
 import 'package:zindagi_plus/routes/app_router.dart';
 import 'package:zindagi_plus/shared/widgets/app_back_button.dart';
@@ -17,6 +18,10 @@ void main() {
       container = ProviderContainer(
         overrides: [
           authRepositoryProvider.overrideWithValue(mockAuth),
+          medicationProvider.overrideWith(
+            (ref) => MedicationNotifier(ref, autoInit: false)
+              ..state = const AsyncValue.data([]),
+          ),
           authNotifierProvider.overrideWith((ref) {
             final notifier = AuthNotifier();
             notifier.setUser(const User(

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/lab_report.dart';
 import 'package:zindagi_plus/providers/repository_providers.dart';
+import 'package:zindagi_plus/services/lab_report_parser.dart';
 
 /// Processing lifecycle stage for UI tracking.
 enum ReportProcessingStage {
@@ -229,6 +230,17 @@ final reportSignedUrlProvider =
   final result = await repo.getReportFileSignedUrl(storagePath);
   return switch (result) {
     Success(data: final url) => url,
+    Failure(message: final msg) => throw Exception(msg),
+  };
+});
+
+/// Provides parsed biomarker measurements for a single report.
+final reportBiomarkersProvider =
+    FutureProvider.autoDispose.family<List<ParsedBiomarker>, String>((ref, reportId) async {
+  final repo = ref.watch(labReportRepositoryProvider);
+  final result = await repo.getBiomarkers(reportId);
+  return switch (result) {
+    Success(data: final list) => list,
     Failure(message: final msg) => throw Exception(msg),
   };
 });

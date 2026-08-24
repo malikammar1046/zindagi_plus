@@ -45,6 +45,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
       body: ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         padding: const EdgeInsets.only(bottom: 100),
         children: [
           // ── Mini profile card ─────────────────────────────────────────────
@@ -444,7 +447,7 @@ class _ListGroup extends StatelessWidget {
 
 // ── Nav row (tappable, chevron) ────────────────────────────────────────────────
 
-class _NavRow extends StatefulWidget {
+class _NavRow extends StatelessWidget {
   const _NavRow({
     required this.icon,
     required this.iconColor,
@@ -466,83 +469,72 @@ class _NavRow extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_NavRow> createState() => _NavRowState();
-}
-
-class _NavRowState extends State<_NavRow> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    final iconBg = widget.iconColor.withValues(alpha: 0.12);
+    final iconBg = iconColor.withValues(alpha: 0.12);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        GestureDetector(
-          onTapDown: (_) => setState(() => _pressed = true),
-          onTapUp: (_) {
-            setState(() => _pressed = false);
-            widget.onTap();
-          },
-          onTapCancel: () => setState(() => _pressed = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 100),
-            color: _pressed ? const Color(0xFFF0F4F3) : Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(10),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: iconBg,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, size: 18, color: iconColor),
                   ),
-                  child: Icon(widget.icon, size: 18, color: widget.iconColor),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: widget.titleColor ?? _kText,
-                        ),
-                      ),
-                      if (widget.subtitle != null) ...[
-                        const SizedBox(height: 2),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Text(
-                          widget.subtitle!,
+                          title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: _kMuted,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: titleColor ?? _kText,
                           ),
                         ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: _kMuted,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                if (widget.showChevron)
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    size: 20,
-                    color: Color(0xFFD1D5DB),
-                  ),
-              ],
+                  if (showChevron)
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: Color(0xFFD1D5DB),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
-        if (!widget.isLast)
+        if (!isLast)
           const Divider(
             height: 1,
             thickness: 1,

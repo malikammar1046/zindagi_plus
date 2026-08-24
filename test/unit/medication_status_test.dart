@@ -66,8 +66,18 @@ void main() {
       expect(status, equals(MedStatus.pending));
     });
 
-    test('Status is MISSED exactly when the 30-minute grace period expires (8:30 AM)', () {
-      final now = DateTime(2026, 8, 17, 8, 30);
+    test('Status is PENDING at exact 30-minute grace boundary (8:30:00 AM)', () {
+      final now = DateTime(2026, 8, 17, 8, 30, 0);
+      final status = Medication.deriveStatus(
+        scheduledTime: scheduledTime,
+        loggedStatus: null,
+        now: now,
+      );
+      expect(status, equals(MedStatus.pending));
+    });
+
+    test('Status is MISSED immediately after 30-minute grace period has elapsed (8:30:01 AM)', () {
+      final now = DateTime(2026, 8, 17, 8, 30, 1);
       final status = Medication.deriveStatus(
         scheduledTime: scheduledTime,
         loggedStatus: null,
@@ -76,7 +86,7 @@ void main() {
       expect(status, equals(MedStatus.missed));
     });
 
-    test('Status is MISSED after the 30-minute grace period has passed (e.g. 9:15 AM)', () {
+    test('Status is MISSED well after the 30-minute grace period has passed (e.g. 9:15 AM)', () {
       final now = DateTime(2026, 8, 17, 9, 15);
       final status = Medication.deriveStatus(
         scheduledTime: scheduledTime,
@@ -84,6 +94,20 @@ void main() {
         now: now,
       );
       expect(status, equals(MedStatus.missed));
+    });
+
+    test('calculateRestoredStatus returns PENDING within grace period and MISSED after', () {
+      final withinGrace = DateTime(2026, 8, 17, 8, 25);
+      expect(
+        Medication.calculateRestoredStatus(scheduledTime: scheduledTime, now: withinGrace),
+        equals(MedStatus.pending),
+      );
+
+      final afterGrace = DateTime(2026, 8, 17, 8, 35);
+      expect(
+        Medication.calculateRestoredStatus(scheduledTime: scheduledTime, now: afterGrace),
+        equals(MedStatus.missed),
+      );
     });
   });
 

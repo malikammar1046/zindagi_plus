@@ -74,6 +74,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
   bool _isSaving = false;
   bool _isUploadingPhoto = false;
   late final AnimationController _entranceCtrl;
+  late final Animation<double> _fadeAnimation;
 
   @override
   void initState() {
@@ -114,8 +115,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
 
     _entranceCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 450),
-    )..forward();
+      duration: const Duration(milliseconds: 350),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _entranceCtrl,
+      curve: Curves.easeOutCubic,
+    );
+    _entranceCtrl.forward();
   }
 
   @override
@@ -148,83 +154,88 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
 
       setState(() => _isUploadingPhoto = true);
 
-      final result = await ref
-          .read(authNotifierProvider.notifier)
-          .uploadProfilePhoto(file);
+      final result =
+          await ref.read(authNotifierProvider.notifier).uploadProfilePhoto(file);
 
       if (!mounted) return;
-      setState(() => _isUploadingPhoto = false);
 
       switch (result) {
         case Success():
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile photo updated successfully.'),
-              backgroundColor: Color(0xFF00674F),
-            ),
+            const SnackBar(content: Text('Profile photo updated successfully!')),
           );
         case Failure(message: final msg):
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Photo upload failed: $msg'),
+              content: Text('Failed to update photo: $msg'),
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isUploadingPhoto = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to pick or upload image: $e'),
+          content: Text('Photo upload error: $e'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+      }
     }
   }
 
   Future<void> _save() async {
+    FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
 
-    final currentUser = ref.read(authNotifierProvider);
-    if (currentUser == null) {
-      setState(() => _isSaving = false);
-      return;
-    }
+    try {
+      final currentUser = ref.read(authNotifierProvider);
+      if (currentUser == null) return;
 
-    final updatedUser = currentUser.copyWith(
-      name: _nameCtrl.text.trim(),
-      age: int.tryParse(_ageCtrl.text.trim()),
-      weightKg: double.tryParse(_weightCtrl.text.trim()),
-      heightCm: double.tryParse(_heightCtrl.text.trim()),
-      bloodType: _bloodType,
-      city: _cityCtrl.text.trim(),
-      primaryGoal: _primaryGoal,
-      dietType: _dietType,
-      conditions: _conditions.toList(),
-      allergies: _allergies.toList(),
-      photoUrl: currentUser.photoUrl,
-    );
+      final updatedUser = currentUser.copyWith(
+        name: _nameCtrl.text.trim(),
+        age: int.tryParse(_ageCtrl.text.trim()),
+        weightKg: double.tryParse(_weightCtrl.text.trim()),
+        heightCm: double.tryParse(_heightCtrl.text.trim()),
+        bloodType: _bloodType,
+        city: _cityCtrl.text.trim(),
+        primaryGoal: _primaryGoal,
+        dietType: _dietType,
+        conditions: _conditions.toList(),
+        allergies: _allergies.toList(),
+        photoUrl: currentUser.photoUrl,
+      );
 
-    final result =
-        await ref.read(authNotifierProvider.notifier).updateProfile(updatedUser);
+      final result =
+          await ref.read(authNotifierProvider.notifier).updateProfile(updatedUser);
 
-    if (!mounted) return;
-    setState(() => _isSaving = false);
+      if (!mounted) return;
 
-    switch (result) {
-      case Success():
-        if (mounted && Navigator.of(context).canPop()) {
-          context.pop();
-        }
-      case Failure(message: final msg):
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Save failed: $msg'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+      switch (result) {
+        case Success():
+          if (mounted) {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/profile');
+            }
+          }
+        case Failure(message: final msg):
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Save failed: $msg'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -332,18 +343,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
           ),
         ],
       ),
-      body: AnimatedBuilder(
-        animation: _entranceCtrl,
-        builder: (_, child) {
-          final t = CurvedAnimation(
-            parent: _entranceCtrl,
-            curve: Curves.easeOutCubic,
-          ).value;
-          return Opacity(opacity: t, child: child);
-        },
+      body: FadeTransition(
+        opacity: _fadeAnimation,
         child: Form(
           key: _formKey,
           child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
             children: [
               // ── Avatar header ─────────────────────────────────────────

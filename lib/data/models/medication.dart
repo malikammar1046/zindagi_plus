@@ -178,7 +178,7 @@ class Medication {
   /// - today's existing dose log status (if any)
   /// - scheduled medication time
   /// - current local time
-  /// - 30-minute grace period
+  /// - full 30-minute grace period (scheduledTime through scheduledTime + 30m is PENDING; strictly after is MISSED)
   static MedStatus deriveStatus({
     required TimeOfDay? scheduledTime,
     required MedStatus? loggedStatus,
@@ -203,14 +203,30 @@ class Medication {
       scheduledTime.minute,
     );
 
-    // 30-minute grace period after scheduled time
+    // Full 30-minute grace period after scheduled time.
+    // Scheduled time through scheduledTime + 30m (inclusive) is PENDING.
+    // After the 30-minute grace period has actually elapsed (now.isAfter(gracePeriodEnd)) is MISSED.
     final gracePeriodEnd = scheduledDateTime.add(const Duration(minutes: 30));
 
-    if (now.isBefore(gracePeriodEnd)) {
-      return MedStatus.pending;
-    } else {
+    if (now.isAfter(gracePeriodEnd)) {
       return MedStatus.missed;
+    } else {
+      return MedStatus.pending;
     }
+  }
+
+  /// Calculates the restored status when an existing dose log is undone/unchecked.
+  /// If [now] is within the 30-minute grace period, restores to [MedStatus.pending].
+  /// If [now] is strictly after the 30-minute grace period has elapsed, restores to [MedStatus.missed].
+  static MedStatus calculateRestoredStatus({
+    required TimeOfDay? scheduledTime,
+    required DateTime now,
+  }) {
+    return deriveStatus(
+      scheduledTime: scheduledTime,
+      loggedStatus: null,
+      now: now,
+    );
   }
 }
 

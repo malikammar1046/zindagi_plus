@@ -67,36 +67,28 @@ class _RouterNotifier extends ChangeNotifier {
         loc == '/forgot-password' ||
         loc == '/reset-password';
 
+    String? target;
     if (!isLoggedIn && !isAuthRoute) {
-      return '/login';
-    }
-
-    if (isLoggedIn) {
-      // Allow user to stay on /reset-password if navigating there (e.g. password recovery flow)
-      if (loc == '/reset-password') {
-        return null;
-      }
-
-      // 1. If user is authenticated but has not finished questionnaire setup
-      if (!user.isOnboardingCompleted) {
-        if (loc != '/onboarding/setup') {
-          return '/onboarding/setup';
+      target = '/login';
+    } else if (isLoggedIn) {
+      if (loc != '/reset-password') {
+        if (!user.isOnboardingCompleted) {
+          if (loc != '/onboarding/setup') {
+            target = '/onboarding/setup';
+          }
+        } else if (loc == '/login' ||
+            loc == '/register' ||
+            loc == '/splash' ||
+            loc == '/onboarding' ||
+            loc == '/onboarding/setup' ||
+            loc == '/email-verification' ||
+            loc == '/forgot-password') {
+          target = '/dashboard';
         }
-        return null;
-      }
-
-      // 2. If user is fully onboarded and tries to access auth / setup screens
-      if (loc == '/login' ||
-          loc == '/register' ||
-          loc == '/splash' ||
-          loc == '/onboarding' ||
-          loc == '/onboarding/setup' ||
-          loc == '/email-verification' ||
-          loc == '/forgot-password') {
-        return '/dashboard';
       }
     }
-    return null;
+    debugPrint('[ROUTER-TRACE] loc=$loc, user=${user?.name}, target=$target');
+    return target;
   }
 }
 

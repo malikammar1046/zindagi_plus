@@ -40,6 +40,9 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         padding: const EdgeInsets.only(bottom: 100),
         children: [
           // ── Profile Header ────────────────────────────────────────────────

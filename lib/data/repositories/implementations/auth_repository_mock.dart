@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthState, OtpType;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show AuthState, AuthChangeEvent, OtpType;
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/user.dart';
 import 'package:zindagi_plus/data/repositories/interfaces/auth_repository.dart';
@@ -48,6 +49,26 @@ class AuthRepositoryMock implements AuthRepository {
     }
 
     return const Failure('Invalid credentials');
+  }
+
+  @override
+  Future<Result<void>> signInWithGoogle() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    _currentUser = const User(
+      id: 'mock_google_user_1',
+      name: 'Google User',
+      email: 'google@test.com',
+      isOnboardingCompleted: true,
+      age: 28,
+      gender: 'Other',
+    );
+    _authStateController.add(
+      const AuthState(
+        AuthChangeEvent.signedIn,
+        null,
+      ),
+    );
+    return const Success(null);
   }
 
   @override
@@ -130,6 +151,12 @@ class AuthRepositoryMock implements AuthRepository {
       photoUrl: imageFile.path,
     );
     return Success(_currentUser!);
+  }
+
+  @override
+  Future<Result<void>> deleteAccount() async {
+    _currentUser = null;
+    return const Success(null);
   }
 }
 

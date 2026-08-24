@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zindagi_plus/data/models/user.dart';
 import 'package:zindagi_plus/data/repositories/implementations/auth_repository_mock.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
+import 'package:zindagi_plus/providers/medication_provider.dart';
 import 'package:zindagi_plus/providers/repository_providers.dart';
 import 'package:zindagi_plus/routes/app_router.dart';
 
@@ -81,6 +82,10 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           authRepositoryProvider.overrideWithValue(AuthRepositoryMock()),
+          medicationProvider.overrideWith(
+            (ref) => MedicationNotifier(ref, autoInit: false)
+              ..state = const AsyncValue.data([]),
+          ),
           authNotifierProvider.overrideWith((ref) {
             final notifier = AuthNotifier();
             notifier.setUser(const User(
@@ -182,6 +187,10 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           authRepositoryProvider.overrideWithValue(AuthRepositoryMock()),
+          medicationProvider.overrideWith(
+            (ref) => MedicationNotifier(ref, autoInit: false)
+              ..state = const AsyncValue.data([]),
+          ),
           authNotifierProvider.overrideWith((ref) {
             final notifier = AuthNotifier();
             notifier.setUser(const User(
@@ -221,6 +230,10 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           authRepositoryProvider.overrideWithValue(mockRepo),
+          medicationProvider.overrideWith(
+            (ref) => MedicationNotifier(ref, autoInit: false)
+              ..state = const AsyncValue.data([]),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -253,6 +266,10 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           authRepositoryProvider.overrideWithValue(mockRepo),
+          medicationProvider.overrideWith(
+            (ref) => MedicationNotifier(ref, autoInit: false)
+              ..state = const AsyncValue.data([]),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -284,6 +301,10 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           authRepositoryProvider.overrideWithValue(mockRepo),
+          medicationProvider.overrideWith(
+            (ref) => MedicationNotifier(ref, autoInit: false)
+              ..state = const AsyncValue.data([]),
+          ),
         ],
       );
       addTearDown(container.dispose);

@@ -37,7 +37,13 @@ class PrimaryButton extends StatelessWidget {
                     Icon(icon, size: 20, color: Colors.white),
                     const SizedBox(width: 8),
                   ],
-                  Text(text),
+                  Flexible(
+                    child: Text(
+                      text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
       ),
@@ -99,8 +105,8 @@ class AppCard extends StatelessWidget {
     return Card(
       color: color,
       margin: margin,
-      clipBehavior: Clip.antiAlias,
       child: InkWell(
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
           padding: padding,

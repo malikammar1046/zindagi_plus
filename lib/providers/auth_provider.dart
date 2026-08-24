@@ -21,9 +21,11 @@ class AuthNotifier extends StateNotifier<User?> {
   StreamSubscription<AuthState>? _authSub;
 
   void _init() {
+    debugPrint('[AUTH-01] AuthNotifier._init()');
     restoreSession();
     _authSub = _authRepo?.authStateChanges?.listen((authState) {
       final event = authState.event;
+      debugPrint('[AUTH-02] AuthChangeEvent: $event');
       if (event == AuthChangeEvent.signedIn ||
           event == AuthChangeEvent.tokenRefreshed ||
           event == AuthChangeEvent.userUpdated ||
@@ -31,6 +33,7 @@ class AuthNotifier extends StateNotifier<User?> {
           event == AuthChangeEvent.initialSession) {
         restoreSession();
       } else if (event == AuthChangeEvent.signedOut) {
+        debugPrint('[AUTH-03] User signed out, state = null');
         state = null;
       }
     });
@@ -38,11 +41,21 @@ class AuthNotifier extends StateNotifier<User?> {
 
   /// Restores the existing Supabase session by fetching the current user.
   Future<void> restoreSession() async {
-    if (_authRepo == null) return;
+    if (_authRepo == null) {
+      debugPrint('[AUTH-04] restoreSession: _authRepo is null');
+      return;
+    }
+    final sw = Stopwatch()..start();
+    debugPrint('[TRACE] restoreSession START');
     final result = await _authRepo.getCurrentUser();
+    sw.stop();
+    debugPrint('[TRACE] restoreSession END duration=${sw.elapsedMilliseconds}ms');
+
     if (result is Success<User>) {
+      debugPrint('[AUTH-06] restoreSession: Success user=${result.data.name} onboarded=${result.data.isOnboardingCompleted}');
       state = result.data;
     } else {
+      debugPrint('[AUTH-07] restoreSession: No session or failure: ${(result as Failure).message}');
       state = null;
     }
   }
@@ -58,6 +71,20 @@ class AuthNotifier extends StateNotifier<User?> {
       debugPrint('[AuthNotifier.logout] Error: $e');
     }
     state = null;
+  }
+
+  /// Permanently deletes the user's account via [AuthRepository] and clears local state on success.
+  Future<Result<void>> deleteAccount() async {
+    if (_authRepo == null) {
+      state = null;
+      return const Success(null);
+    }
+
+    final result = await _authRepo.deleteAccount();
+    if (result is Success<void>) {
+      state = null;
+    }
+    return result;
   }
 
   /// Persists updated profile to Supabase and refreshes local auth state.

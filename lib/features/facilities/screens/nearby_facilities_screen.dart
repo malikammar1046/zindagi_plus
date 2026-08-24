@@ -55,7 +55,7 @@ class NearbyFacilitiesScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Map View (Placeholder)',
+                            'Map View (Demo Preview)',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -75,6 +75,30 @@ class NearbyFacilitiesScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 16, color: colorScheme.primary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Demo Catalog: Sample list of regional medical centers and fitness facilities. Live GPS radius search will be enabled in upcoming releases.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withValues(alpha: 0.75),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SectionHeader(title: 'Recommended for you'),
                   const SizedBox(height: 12),
                   _FacilityTile(

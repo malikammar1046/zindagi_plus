@@ -14,6 +14,12 @@ abstract class AuthRepository {
   /// or [Failure<User>] with an error message otherwise.
   Future<Result<User>> login(String email, String password);
 
+  /// Initiates Google OAuth authentication.
+  ///
+  /// Opens the browser/custom tab for the user to select their Google account,
+  /// and redirects back to the configured deep-link callback URL.
+  Future<Result<void>> signInWithGoogle();
+
   /// Registers a new user account.
   ///
   /// Returns [Success<User>] on success,
@@ -60,6 +66,9 @@ abstract class AuthRepository {
   /// links the resulting storage URL in the user's `profiles.avatar_url` record,
   /// and returns the refreshed [User].
   Future<Result<User>> uploadProfilePhoto(File imageFile);
+
+  /// Permanently deletes the authenticated user's account and associated data.
+  Future<Result<void>> deleteAccount();
 
   /// Stream of Supabase auth state change events.
   Stream<AuthState>? get authStateChanges;

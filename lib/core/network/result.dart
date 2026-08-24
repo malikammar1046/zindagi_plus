@@ -4,10 +4,23 @@
 /// and [Failure] when an error occurred.
 sealed class Result<T> {
   const Result();
+
+  bool get isSuccess => this is Success<T>;
+  bool get isFailure => this is Failure<T>;
+
+  T? get dataOrNull => switch (this) {
+        Success(data: final d) => d,
+        Failure() => null,
+      };
+
+  Failure<T>? get failureOrNull => switch (this) {
+        Failure() => this as Failure<T>,
+        Success() => null,
+      };
 }
 
 /// Wraps a successful value of type [T].
-final class Success<T> extends Result<T> {
+base class Success<T> extends Result<T> {
   const Success(this.data);
   final T data;
 
@@ -16,7 +29,7 @@ final class Success<T> extends Result<T> {
 }
 
 /// Wraps an error [message] describing what went wrong.
-final class Failure<T> extends Result<T> {
+base class Failure<T> extends Result<T> {
   const Failure(this.message);
   final String message;
 

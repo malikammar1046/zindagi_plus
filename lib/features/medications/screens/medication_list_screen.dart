@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/medication.dart';
 import 'package:zindagi_plus/providers/medication_provider.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
@@ -84,8 +85,17 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen>
         data: (allMeds) {
           final medications = notifier.activeMedications;
           final takenCount = notifier.takenCount;
+          final missedCount = notifier.missedCount;
+          final pendingCount = notifier.pendingCount;
           final totalCount = notifier.totalCount;
+          final dueCount = notifier.dueCount;
           final adherence = notifier.adherence;
+
+          final subtitleText = totalCount == 0
+              ? 'No active medications'
+              : dueCount == 0
+                  ? '$totalCount scheduled today (all pending)'
+                  : '$takenCount of $totalCount doses taken';
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
@@ -151,7 +161,7 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen>
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                '$takenCount of $totalCount doses taken',
+                                subtitleText,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: colorScheme.onSurface
@@ -163,9 +173,9 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen>
                                 spacing: 8,
                                 runSpacing: 4,
                                 children: [
-                                  _StatusDot(colorScheme.primary, 'Taken'),
-                                  const _StatusDot(Colors.orange, 'Pending'),
-                                  const _StatusDot(Colors.red, 'Missed'),
+                                  _StatusDot(colorScheme.primary, '$takenCount Taken'),
+                                  _StatusDot(Colors.orange, '$pendingCount Pending'),
+                                  _StatusDot(Colors.red, '$missedCount Missed'),
                                 ],
                               ),
                             ],
@@ -187,7 +197,7 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen>
                   padding: EdgeInsets.symmetric(vertical: 40),
                   child: Center(
                     child: Text(
-                      'No medications added yet.\nTap below to add your first prescription.',
+                      'No active medications.\nTap below to add your prescription.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey, height: 1.5),
                     ),
@@ -195,13 +205,25 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen>
                 )
               else
                 ...List.generate(medications.length, (i) {
+                  final med = medications[i];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _MedCard(
-                      med: medications[i],
-                      onToggle: () => ref
-                          .read(medicationProvider.notifier)
-                          .toggleStatus(i),
+                      med: med,
+                      onToggle: () async {
+                        final result = await ref
+                            .read(medicationProvider.notifier)
+                            .toggleStatus(i);
+                        if (result.isFailure && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to update dose: ${result.failureOrNull?.message ?? ""}'),
+                              backgroundColor: Theme.of(context).colorScheme.error,
+                            ),
+                          );
+                        }
+                      },
+                      onDiscontinue: () => _confirmDiscontinue(context, ref, med),
                     ),
                   );
                 }),
@@ -211,15 +233,79 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen>
       ),
     );
   }
+
+  Future<void> _confirmDiscontinue(
+    BuildContext context,
+    WidgetRef ref,
+    Medication med,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          'Discontinue medication?',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        content: const Text(
+          'This will stop future reminders for this medication.\nPrevious medication and dose history will be preserved.',
+          style: TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Discontinue'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final result = await ref
+          .read(medicationProvider.notifier)
+          .deleteMedication(med.id);
+      if (context.mounted) {
+        switch (result) {
+          case Success():
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${med.name} discontinued. History is preserved.'),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+              ),
+            );
+          case Failure(message: final msg):
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Could not discontinue: $msg'),
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+            );
+        }
+      }
+    }
+  }
 }
 
 
 // ── Medication card ────────────────────────────────────────────────────────────
 
 class _MedCard extends StatefulWidget {
-  const _MedCard({required this.med, required this.onToggle});
+  const _MedCard({
+    required this.med,
+    required this.onToggle,
+    required this.onDiscontinue,
+  });
+
   final Medication med;
   final VoidCallback onToggle;
+  final VoidCallback onDiscontinue;
 
   @override
   State<_MedCard> createState() => _MedCardState();
@@ -371,6 +457,47 @@ class _MedCardState extends State<_MedCard> {
                   ],
                 ),
               ),
+              // More options menu (Discontinue)
+              PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  size: 20,
+                  color: colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
+                tooltip: 'Medication options',
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                onSelected: (val) {
+                  if (val == 'discontinue') {
+                    widget.onDiscontinue();
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  PopupMenuItem<String>(
+                    value: 'discontinue',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.cancel_outlined,
+                          size: 18,
+                          color: colorScheme.error,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Discontinue Medication',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -489,6 +616,7 @@ class _AdherenceRingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.width <= 14 || size.height <= 14) return;
     final c = Offset(size.width / 2, size.height / 2);
     final r = size.width / 2 - 7;
     final rect = Rect.fromCircle(center: c, radius: r);

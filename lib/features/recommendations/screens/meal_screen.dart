@@ -58,7 +58,7 @@ class MealScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'AI-Curated Pakistani Meals',
+                          'Sample Pakistani Meal Plans',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -67,10 +67,10 @@ class MealScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Tap any meal to see full details & nutrition',
+                          'Culturally tailored sample nutrition. Personalized plans calibrate with your reports.',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.8), 
-                            fontSize: 13,
+                            fontSize: 12,
                           ),
                         ),
                       ],

@@ -1,23 +1,121 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zindagi_plus/providers/supabase_provider.dart';
 import 'package:zindagi_plus/shared/widgets/app_components.dart';
 
-class NotificationPreferencesScreen extends StatefulWidget {
+class NotificationPreferencesScreen extends ConsumerStatefulWidget {
   const NotificationPreferencesScreen({super.key});
 
   @override
-  State<NotificationPreferencesScreen> createState() => _NotificationPreferencesScreenState();
+  ConsumerState<NotificationPreferencesScreen> createState() => _NotificationPreferencesScreenState();
 }
 
-class _NotificationPreferencesScreenState extends State<NotificationPreferencesScreen> {
+class _NotificationPreferencesScreenState extends ConsumerState<NotificationPreferencesScreen> {
   bool _medReminders = true;
   bool _weeklyReviews = true;
   bool _reportAnalysis = true;
   bool _healthInsights = false;
   bool _promotions = false;
+  bool _isSaving = false;
   
   TimeOfDay _quietStart = const TimeOfDay(hour: 22, minute: 0);
   TimeOfDay _quietEnd = const TimeOfDay(hour: 7, minute: 0);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSettings();
+    });
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final client = ref.read(supabaseClientProvider);
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final res = await client
+          .from('user_notification_settings')
+          .select()
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (res != null && mounted) {
+        setState(() {
+          _medReminders = (res['med_reminders'] as bool?) ?? true;
+          _weeklyReviews = (res['weekly_reviews'] as bool?) ?? true;
+          _reportAnalysis = (res['report_analysis'] as bool?) ?? true;
+          _healthInsights = (res['health_insights'] as bool?) ?? false;
+          _promotions = (res['promotions'] as bool?) ?? false;
+
+          final qs = res['quiet_start'] as String?;
+          if (qs != null && qs.contains(':')) {
+            final parts = qs.split(':');
+            _quietStart = TimeOfDay(
+              hour: int.tryParse(parts[0]) ?? 22,
+              minute: int.tryParse(parts[1]) ?? 0,
+            );
+          }
+
+          final qe = res['quiet_end'] as String?;
+          if (qe != null && qe.contains(':')) {
+            final parts = qe.split(':');
+            _quietEnd = TimeOfDay(
+              hour: int.tryParse(parts[0]) ?? 7,
+              minute: int.tryParse(parts[1]) ?? 0,
+            );
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('[NotificationPreferencesScreen] Could not load settings: $e');
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    setState(() => _isSaving = true);
+    try {
+      final client = ref.read(supabaseClientProvider);
+      final userId = client.auth.currentUser?.id;
+
+      if (userId != null) {
+        final qs = '${_quietStart.hour.toString().padLeft(2, '0')}:${_quietStart.minute.toString().padLeft(2, '0')}:00';
+        final qe = '${_quietEnd.hour.toString().padLeft(2, '0')}:${_quietEnd.minute.toString().padLeft(2, '0')}:00';
+
+        await client.from('user_notification_settings').upsert({
+          'user_id': userId,
+          'med_reminders': _medReminders,
+          'weekly_reviews': _weeklyReviews,
+          'report_analysis': _reportAnalysis,
+          'health_insights': _healthInsights,
+          'promotions': _promotions,
+          'quiet_start': qs,
+          'quiet_end': qe,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notification preferences saved successfully')),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save preferences: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
   Future<void> _pickTime(bool isStart) async {
     final initial = isStart ? _quietStart : _quietEnd;
@@ -53,6 +151,30 @@ class _NotificationPreferencesScreenState extends State<NotificationPreferencesS
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                 children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 16, color: colorScheme.primary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Local Reminders: Medicine notifications are scheduled on this device. Quiet hours are saved to your profile for background sync.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withValues(alpha: 0.75),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   const SectionHeader(
                     title: 'Push Notifications',
                     subtitle: 'Choose what you want to be notified about.',
@@ -161,13 +283,8 @@ class _NotificationPreferencesScreenState extends State<NotificationPreferencesS
                 ],
               ),
               child: PrimaryButton(
-                text: 'Save Preferences',
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Preferences saved')),
-                  );
-                  context.pop();
-                },
+                text: _isSaving ? 'Saving...' : 'Save Preferences',
+                onPressed: _isSaving ? null : _saveSettings,
               ),
             ),
           ],

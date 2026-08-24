@@ -1,6 +1,7 @@
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/lab_report.dart';
 import 'package:zindagi_plus/data/repositories/interfaces/lab_report_repository.dart';
+import 'package:zindagi_plus/services/lab_report_parser.dart';
 import 'package:zindagi_plus/services/ocr/mock_ocr_service.dart';
 import 'package:zindagi_plus/services/ocr/ocr_service.dart';
 
@@ -153,6 +154,25 @@ class LabReportRepositoryMock implements LabReportRepository {
   Future<Result<String>> getReportFileSignedUrl(String storagePath) async {
     await Future.delayed(const Duration(milliseconds: 150));
     return Success('https://example.com/storage/signed/$storagePath');
+  }
+
+  @override
+  Future<Result<void>> saveBiomarkers(
+    String reportId,
+    String userId,
+    List<ParsedBiomarker> biomarkers,
+  ) async {
+    // No-op in mock — biomarkers are derived in-memory from extractedText.
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<List<ParsedBiomarker>>> getBiomarkers(String reportId) async {
+    // Derive biomarkers on-the-fly from mock OCR text.
+    final report = _reports.where((r) => r.id == reportId).firstOrNull;
+    if (report == null) return const Success([]);
+    final biomarkers = LabReportParser.parse(report.extractedText);
+    return Success(biomarkers);
   }
 
   /// Helper for tests to reset mock state

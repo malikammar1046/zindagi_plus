@@ -14,27 +14,39 @@ class SplashScreen extends ConsumerStatefulWidget {
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
+  late final Animation<double> _scaleAnim;
+  late final Animation<double> _opacityAnim;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('[SPLASH-01] SplashScreen initState()');
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
-    )..forward();
+    );
+    _scaleAnim = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack),
+    );
+    _opacityAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
+    _ctrl.forward();
 
     // Auto-navigate after visual splash delay based on real session state
     _timer = Timer(const Duration(seconds: 2), () {
       if (!mounted) return;
       final user = ref.read(authNotifierProvider);
+      debugPrint('[SPLASH-02] Splash timer fired, user=${user?.name} onboarded=${user?.isOnboardingCompleted}');
       if (user != null) {
         if (user.isOnboardingCompleted) {
+          debugPrint('[SPLASH-03] Navigating to /dashboard');
           context.go('/dashboard');
         } else {
+          debugPrint('[SPLASH-03] Navigating to /onboarding/setup');
           context.go('/onboarding/setup');
         }
       } else {
+        debugPrint('[SPLASH-03] Navigating to /onboarding');
         context.go('/onboarding');
       }
     });
@@ -49,6 +61,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[SPLASH-04] SplashScreen build()');
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -57,19 +70,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         child: AnimatedBuilder(
           animation: _ctrl,
           builder: (context, child) {
-            final t = CurvedAnimation(
-              parent: _ctrl,
-              curve: Curves.easeOutBack,
-            ).value;
-            final opacity = CurvedAnimation(
-              parent: _ctrl,
-              curve: Curves.easeIn,
-            ).value;
-
             return Opacity(
-              opacity: opacity,
+              opacity: _opacityAnim.value,
               child: Transform.scale(
-                scale: 0.8 + (0.2 * t),
+                scale: _scaleAnim.value,
                 child: child,
               ),
             );

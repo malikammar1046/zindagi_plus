@@ -33,6 +33,7 @@ class AppBackButton extends StatelessWidget {
       color: iconColor,
       tooltip: MaterialLocalizations.of(context).backButtonTooltip,
       onPressed: () {
+        FocusScope.of(context).unfocus();
         if (onPressed != null) {
           onPressed!();
         } else if (context.canPop()) {

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zindagi_plus/core/network/result.dart';
-import 'package:zindagi_plus/data/models/medication.dart';
 import 'package:zindagi_plus/providers/auth_provider.dart';
+import 'package:zindagi_plus/providers/medication_provider.dart';
 import 'package:zindagi_plus/providers/repository_providers.dart';
 
 export 'package:zindagi_plus/providers/report_providers.dart';
@@ -9,26 +9,19 @@ export 'package:zindagi_plus/providers/report_providers.dart';
 /// Provides dashboard summary data, merging real Supabase profile/medication
 /// data with mock values for fields not yet backed by a DB (healthScore,
 /// recentInsights, lastReport).
-final dashboardDataProvider =
-    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  // Watch auth state so dashboard re-builds when profile changes.
-  final user = ref.watch(authNotifierProvider);
+final dashboardDataProvider = Provider<Map<String, dynamic>>((ref) {
+  // Use granular selectors so dashboard only recalculates when relevant fields change.
+  final userName = ref.watch(authNotifierProvider.select((u) => u?.name ?? 'there'));
+  final weightKg = ref.watch(authNotifierProvider.select((u) => u?.weightKg));
+  final activeMedsCount = ref.watch(medicationProvider.select((medsAsync) =>
+      medsAsync.maybeWhen(
+        data: (meds) => meds.where((m) => m.isActive).length,
+        orElse: () => 0,
+      )));
 
-  int activeMedsCount = 0;
-  if (user != null) {
-    // Load all medications and count active ones when authenticated.
-    final medRepo = ref.read(medicationRepositoryProvider);
-    final medResult = await medRepo.getMedications();
-
-    if (medResult is Success<List<Medication>>) {
-      activeMedsCount =
-          medResult.data.where((m) => m.isActive).length;
-    }
-  }
-
-  // Weight from the real profile — display as "XX kg" or "—" if not set.
-  final weightStr = user?.weightKg != null
-      ? '${user!.weightKg!.toStringAsFixed(0)} kg'
+  // Weight from the real profile — display as "XX kg" or "— kg" if not set.
+  final weightStr = weightKg != null
+      ? '${weightKg.toStringAsFixed(0)} kg'
       : '— kg';
 
   // Static mock values for fields pending AI / analytics integration.
@@ -42,13 +35,14 @@ final dashboardDataProvider =
 
   return {
     'healthScore': healthScore,
-    'userName': user?.name ?? 'there',
+    'userName': userName,
     'activeMeds': activeMedsCount,
     'lastReport': lastReport,
     'weight': weightStr,
     'recentInsights': recentInsights,
   };
 });
+
 
 /// Provides AI meal recommendations.
 final mealRecommendationsProvider =

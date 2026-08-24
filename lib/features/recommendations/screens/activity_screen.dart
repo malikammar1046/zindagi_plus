@@ -220,7 +220,7 @@ class _ActivityScreenState extends State<ActivityScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'AI-Tailored Activity Plan',
+                          'Sample Activity Plan (Demo)',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -229,7 +229,7 @@ class _ActivityScreenState extends State<ActivityScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Personalised for blood sugar management & weight',
+                          'Curated exercise catalog. Dynamic AI adaptation unlocks in next phase.',
                           style: TextStyle(
                             fontSize: 12,
                             color:

@@ -26,13 +26,22 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     if (!_isConfirmed || _passwordCtrl.text.isEmpty) return;
     
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1500)); // Simulate API call
+    
+    final result = await ref.read(authNotifierProvider.notifier).deleteAccount();
     if (!mounted) return;
     
-    // Actually log out
-    ref.read(authNotifierProvider.notifier).logout();
-    
-    // Let the router redirect to splash/login automatically
+    if (result.isFailure) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.failureOrNull?.message ?? 'Account deletion failed. Please try again.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
+    // On Success, authNotifier sets state to null and router redirects automatically.
   }
 
   @override

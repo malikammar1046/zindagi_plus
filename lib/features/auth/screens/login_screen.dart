@@ -18,6 +18,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
 
@@ -46,6 +47,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     switch (result) {
       case Success(data: final user):
         ref.read(authNotifierProvider.notifier).setUser(user);
+      case Failure(message: final msg):
+        setState(() => _errorMessage = msg);
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() {
+      _isGoogleLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await ref.read(authRepositoryProvider).signInWithGoogle();
+
+    if (!mounted) return;
+    setState(() => _isGoogleLoading = false);
+
+    switch (result) {
+      case Success():
+        // Browser was launched for OAuth. On return via deep-link callback,
+        // Supabase Flutter processes session and notifies AuthNotifier -> GoRouter automatically redirects.
+        break;
       case Failure(message: final msg):
         setState(() => _errorMessage = msg);
     }
@@ -229,9 +251,74 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // ── Login button ───────────────────────────────────────────
                 PrimaryButton(
                   text: 'Sign In',
-                  onPressed: _isLoading ? null : _login,
+                  onPressed: (_isLoading || _isGoogleLoading) ? null : _login,
                   isLoading: _isLoading,
                   icon: Icons.arrow_forward_rounded,
+                ),
+
+                const SizedBox(height: 20),
+
+                // ── Divider ────────────────────────────────────────────────
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: theme.dividerColor)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'OR',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface.withValues(alpha: 0.4),
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: theme.dividerColor)),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // ── Continue with Google button ────────────────────────────
+                OutlinedButton(
+                  onPressed:
+                      (_isLoading || _isGoogleLoading) ? null : _loginWithGoogle,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(
+                      color: colorScheme.outline.withValues(alpha: 0.25),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    backgroundColor: theme.cardColor,
+                  ),
+                  child: _isGoogleLoading
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                colorScheme.primary),
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const _GoogleLogoIcon(size: 20),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Continue with Google',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
 
                 const SizedBox(height: 24),
@@ -274,4 +361,79 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+}
+
+class _GoogleLogoIcon extends StatelessWidget {
+  const _GoogleLogoIcon({this.size = 20});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _GoogleLogoPainter(),
+    );
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final center = Offset(w / 2, h / 2);
+    final radius = w / 2;
+
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    // Draw standard Google 4-color 'G'
+    // Blue: #4285F4, Green: #34A853, Yellow: #FBBC05, Red: #EA4335
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    // Red (top arc)
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(rect, -3.14159 / 2 - 0.6, 1.6, true, paint);
+
+    // Yellow (left arc)
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(rect, 3.14159 / 2 + 0.5, 1.4, true, paint);
+
+    // Green (bottom arc)
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(rect, 0.2, 1.7, true, paint);
+
+    // Blue (right arc)
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(rect, -0.6, 1.0, true, paint);
+
+    // Inner cutout to form 'G' shape
+    final innerPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius * 0.55, innerPaint);
+
+    // Blue crossbar
+    final barPaint = Paint()..color = const Color(0xFF4285F4);
+    final barRect = Rect.fromLTRB(
+      center.dx,
+      center.dy - (radius * 0.22),
+      center.dx + radius,
+      center.dy + (radius * 0.22),
+    );
+    canvas.drawRect(barRect, barPaint);
+
+    // Cutout right-upper quadrant inside crossbar
+    final topCutout = Rect.fromLTRB(
+      center.dx,
+      center.dy - radius,
+      center.dx + radius,
+      center.dy - (radius * 0.22),
+    );
+    canvas.drawRect(topCutout, innerPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

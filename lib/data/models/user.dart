@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Represents an authenticated user of the Zindagi+ platform.
 class User {
   const User({
@@ -244,8 +246,46 @@ class User {
       other is User &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          email == other.email;
+          name == other.name &&
+          email == other.email &&
+          isOnboardingCompleted == other.isOnboardingCompleted &&
+          age == other.age &&
+          dateOfBirth == other.dateOfBirth &&
+          weightKg == other.weightKg &&
+          heightCm == other.heightCm &&
+          bloodType == other.bloodType &&
+          gender == other.gender &&
+          city == other.city &&
+          phone == other.phone &&
+          photoUrl == other.photoUrl &&
+          primaryGoal == other.primaryGoal &&
+          activityLevel == other.activityLevel &&
+          fitnessExperience == other.fitnessExperience &&
+          workoutTimePerDay == other.workoutTimePerDay &&
+          equipment == other.equipment &&
+          dietType == other.dietType &&
+          listEquals(conditions, other.conditions) &&
+          listEquals(allergies, other.allergies) &&
+          listEquals(secondaryGoals, other.secondaryGoals) &&
+          listEquals(foodPreferences, other.foodPreferences) &&
+          listEquals(foodsToAvoid, other.foodsToAvoid);
 
   @override
-  int get hashCode => Object.hash(id, email);
+  int get hashCode => Object.hash(
+        id,
+        name,
+        email,
+        isOnboardingCompleted,
+        age,
+        weightKg,
+        heightCm,
+        bloodType,
+        gender,
+        city,
+        phone,
+        photoUrl,
+        primaryGoal,
+        activityLevel,
+        dietType,
+      );
 }

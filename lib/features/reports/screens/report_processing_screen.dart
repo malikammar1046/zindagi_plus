@@ -635,6 +635,7 @@ class _RingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.width <= 16 || size.height <= 16) return;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - 16) / 2;
 

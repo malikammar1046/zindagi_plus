@@ -23,21 +23,12 @@ class MedicationRepositorySupabase implements MedicationRepository {
 
   Result<String> _validateAuth(
     String operation,
-    String table, {
-    Map<String, dynamic>? payload,
-  }) {
+    String table,
+  ) {
     final session = _client.auth.currentSession;
     final user = _client.auth.currentUser;
 
-    debugPrint('[MedicationRepositorySupabase.$operation] Diagnostic Auth Check:');
-    debugPrint('  - Table: $table');
-    debugPrint('  - hasSession: ${session != null}');
-    debugPrint('  - isSessionExpired: ${session?.isExpired ?? true}');
-    debugPrint('  - userId: ${user?.id}');
-    if (payload != null) {
-      debugPrint('  - payloadKeys: ${payload.keys.toList()}');
-      debugPrint('  - payloadUserId: ${payload['user_id']}');
-    }
+    debugPrint('[MedicationRepo.$operation] table=$table userId=${user?.id} hasSession=${session != null}');
 
     if (session == null || user == null || user.id.isEmpty) {
       debugPrint(
@@ -227,25 +218,12 @@ class MedicationRepositorySupabase implements MedicationRepository {
     }
     final authenticatedUserId = (authCheck as Success<String>).data;
 
-    // Only 'taken' and 'missed' are valid DB values.
-    if (status == MedStatus.pending) {
-      return const Failure('Cannot log a pending status.');
-    }
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+    final todayEnd = DateTime(now.year, now.month, now.day + 1).toUtc().toIso8601String();
 
     try {
-      final statusStr = status == MedStatus.taken ? 'taken' : 'missed';
-      final payload = {
-        'medication_id': medicationId,
-        'user_id': authenticatedUserId,
-        'status': statusStr,
-        'logged_at': DateTime.now().toUtc().toIso8601String(),
-      };
-      debugPrint(
-        '[MedicationRepositorySupabase.logDose] Inserting dose log for user_id=$authenticatedUserId',
-      );
-      await _client.from('medication_dose_logs').insert(payload);
-
-      // Fetch the medication details for the DoseLog model.
+      // 1. Fetch medication details
       final medRow = await _client
           .from('medications')
           .select('name, dose, schedule_time')
@@ -253,15 +231,48 @@ class MedicationRepositorySupabase implements MedicationRepository {
           .eq('user_id', authenticatedUserId)
           .maybeSingle();
 
+      final medName = (medRow?['name'] as String?) ?? 'Unknown';
+      final medDose = (medRow?['dose'] as String?) ?? '';
+      final medScheduleTime = medRow?['schedule_time'] as String?;
+
+      // 2. Remove existing dose log for today to ensure idempotent state
+      await _client
+          .from('medication_dose_logs')
+          .delete()
+          .eq('medication_id', medicationId)
+          .eq('user_id', authenticatedUserId)
+          .gte('logged_at', todayStart)
+          .lt('logged_at', todayEnd);
+
+      if (status == MedStatus.pending) {
+        return Success(DoseLog(
+          medicationId: medicationId,
+          medicationName: medName,
+          dose: medDose,
+          scheduledTime: medScheduleTime,
+          status: MedStatus.pending,
+          loggedAt: now,
+        ));
+      }
+
+      // 3. Insert new log for taken or missed
+      final statusStr = status == MedStatus.taken ? 'taken' : 'missed';
+      final payload = {
+        'medication_id': medicationId,
+        'user_id': authenticatedUserId,
+        'status': statusStr,
+        'logged_at': now.toUtc().toIso8601String(),
+      };
+      await _client.from('medication_dose_logs').insert(payload);
+
       final log = DoseLog(
         medicationId: medicationId,
-        medicationName: (medRow?['name'] as String?) ?? 'Unknown',
-        dose: (medRow?['dose'] as String?) ?? '',
-        scheduledTime: medRow?['schedule_time'] as String?,
+        medicationName: medName,
+        dose: medDose,
+        scheduledTime: medScheduleTime,
         status: status,
-        loggedAt: DateTime.now(),
+        loggedAt: now,
       );
-      debugPrint('[MedicationRepositorySupabase.logDose] Logged $statusStr for $medicationId');
       return Success(log);
     } catch (e, st) {
       _logError('logDose', e, st);
@@ -335,8 +346,8 @@ class MedicationRepositorySupabase implements MedicationRepository {
 
         final gracePeriodEnd = scheduledToday.add(const Duration(minutes: 30));
 
-        // If current time is past the 30-minute grace period and no record exists:
-        if (now.isAfter(gracePeriodEnd) || now.isAtSameMomentAs(gracePeriodEnd)) {
+        // If current time is strictly after the 30-minute grace period and no record exists:
+        if (now.isAfter(gracePeriodEnd)) {
           final payload = {
             'medication_id': medId,
             'user_id': authenticatedUserId,

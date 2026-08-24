@@ -149,10 +149,12 @@ void main() {
         expect(u.isOnboardingCompleted, isFalse);
       });
 
-      test('equality based on id and email', () {
+      test('equality is based on all User fields', () {
         const u1 = User(id: 'a', name: 'X', email: 'a@b.com');
-        const u2 = User(id: 'a', name: 'Y', email: 'a@b.com');
+        const u2 = User(id: 'a', name: 'X', email: 'a@b.com');
+        const u3 = User(id: 'a', name: 'Y', email: 'a@b.com');
         expect(u1, equals(u2));
+        expect(u1, isNot(equals(u3)));
       });
     });
   });

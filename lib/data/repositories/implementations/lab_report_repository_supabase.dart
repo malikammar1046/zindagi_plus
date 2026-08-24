@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import 'package:zindagi_plus/core/network/result.dart';
 import 'package:zindagi_plus/data/models/lab_report.dart';
 import 'package:zindagi_plus/data/repositories/interfaces/lab_report_repository.dart';
+import 'package:zindagi_plus/services/lab_report_parser.dart';
 import 'package:zindagi_plus/services/ocr/ocr_service.dart';
 
 /// Real Supabase implementation of [LabReportRepository].
@@ -105,6 +106,10 @@ class LabReportRepositorySupabase implements LabReportRepository {
         return Success(createdReport);
       } catch (dbError, dbStack) {
         _logDbError('uploadReport.insert', dbError, dbStack);
+        // Clean up orphaned storage object to avoid leaving unreferenced medical files
+        try {
+          await _client.storage.from('reports').remove([storagePath]);
+        } catch (_) {}
         return Failure('Failed to create report record: ${_mapDbError(dbError)}');
       }
     } catch (e, stack) {
@@ -138,7 +143,20 @@ class LabReportRepositorySupabase implements LabReportRepository {
       if (ocrResult is Success<String>) {
         final extractedRawText = ocrResult.data;
 
-        // 3a. Successful extraction -> update status to 'completed'
+        // 3a. Parse biomarkers from extracted text (deterministic, never throws)
+        final biomarkers = LabReportParser.parse(extractedRawText);
+        debugPrint('[OCR] Parsed ${biomarkers.length} biomarker(s) from extracted text.');
+
+        // 3b. Persist biomarkers (non-fatal if this fails)
+        if (biomarkers.isNotEmpty) {
+          try {
+            await saveBiomarkers(reportId, userId, biomarkers);
+          } catch (bmErr) {
+            debugPrint('[OCR] saveBiomarkers non-fatal error: $bmErr');
+          }
+        }
+
+        // 3c. Successful extraction -> update status to 'completed'
         try {
           final updateResponse = await _client
               .from('lab_reports')
@@ -147,13 +165,14 @@ class LabReportRepositorySupabase implements LabReportRepository {
                 'extracted_text': extractedRawText,
                 'processed_at': DateTime.now().toUtc().toIso8601String(),
                 'error_message': null,
+                'biomarker_count': biomarkers.length,
               })
               .eq('id', reportId)
               .eq('user_id', userId)
               .select()
               .single();
 
-          debugPrint('[OCR] Processing completed successfully for report ID: $reportId (${extractedRawText.length} chars extracted)');
+          debugPrint('[OCR] Processing completed successfully for report ID: $reportId (${extractedRawText.length} chars, ${biomarkers.length} biomarkers)');
           return Success(LabReport.fromJson(updateResponse));
         } catch (dbCompleteError, dbCompleteStack) {
           _logDbError('processReport.saveExtractedText', dbCompleteError, dbCompleteStack);
@@ -161,7 +180,7 @@ class LabReportRepositorySupabase implements LabReportRepository {
         }
       } else {
         final errorMessage = (ocrResult as Failure<String>).message;
-        debugPrint('[OCR] ML Kit extraction failed: $errorMessage');
+        debugPrint('[OCR] ML Kit extraction failed for report ID $reportId');
 
         // 3b. OCR Failure -> update status to 'failed', preserve original file
         try {
@@ -181,7 +200,8 @@ class LabReportRepositorySupabase implements LabReportRepository {
         return Failure(errorMessage);
       }
     } catch (e, stack) {
-      debugPrint('[OCR] Unexpected processing error: $e\n$stack');
+      _logDbError('processReport.unexpected', e, stack);
+      debugPrint('[OCR] Unexpected processing error for report ID $reportId: ${_mapDbError(e)}');
       // Mark as failed in DB on uncaught exception
       try {
         await _client.from('lab_reports').update({
@@ -203,6 +223,7 @@ class LabReportRepositorySupabase implements LabReportRepository {
     if (authCheck is Failure<String>) return Failure(authCheck.message);
     final userId = (authCheck as Success<String>).data;
 
+    File? tempFileToClean;
     try {
       String localFilePath = filePath ?? '';
 
@@ -223,12 +244,19 @@ class LabReportRepositorySupabase implements LabReportRepository {
         final tempFile = File('${tempDir.path}/retry_${reportId}_$fileName');
         await tempFile.writeAsBytes(fileBytes);
         localFilePath = tempFile.path;
+        tempFileToClean = tempFile;
       }
 
       return await processReport(reportId, localFilePath);
     } catch (e, stack) {
       _logDbError('retryProcessing', e, stack);
       return Failure('Could not retry report processing: ${_mapDbError(e)}');
+    } finally {
+      if (tempFileToClean != null && tempFileToClean.existsSync()) {
+        try {
+          await tempFileToClean.delete();
+        } catch (_) {}
+      }
     }
   }
 
@@ -298,6 +326,66 @@ class LabReportRepositorySupabase implements LabReportRepository {
     } catch (e) {
       debugPrint('[LabReportRepositorySupabase.getReportFileSignedUrl] Error: $e');
       return Failure('Could not generate secure document preview URL.');
+    }
+  }
+
+  // ── Biomarkers ──────────────────────────────────────────────────────────────
+
+  @override
+  Future<Result<void>> saveBiomarkers(
+    String reportId,
+    String userId,
+    List<ParsedBiomarker> biomarkers,
+  ) async {
+    if (biomarkers.isEmpty) return const Success(null);
+    try {
+      final rows = biomarkers.map((b) => {
+        'report_id': reportId,
+        'user_id': userId,
+        'biomarker_name': b.name,
+        'measured_value': b.value.toString(),
+        'numeric_value': b.value,
+        'unit': b.unit,
+        'reference_range': '',
+        'status': 'normal',
+      }).toList();
+
+      await _client.from('report_biomarkers').insert(rows);
+      debugPrint('[Biomarkers] Saved ${rows.length} biomarker(s) for report $reportId');
+      return const Success(null);
+    } catch (e, st) {
+      _logDbError('saveBiomarkers', e, st);
+      return Failure('Failed to save biomarkers: ${_mapDbError(e)}');
+    }
+  }
+
+  @override
+  Future<Result<List<ParsedBiomarker>>> getBiomarkers(String reportId) async {
+    final authCheck = _validateAuth('getBiomarkers');
+    if (authCheck is Failure<String>) return Failure(authCheck.message);
+    final userId = (authCheck as Success<String>).data;
+
+    try {
+      final rows = await _client
+          .from('report_biomarkers')
+          .select('biomarker_name, numeric_value, unit')
+          .eq('report_id', reportId)
+          .eq('user_id', userId)
+          .order('created_at', ascending: true);
+
+      final biomarkers = (rows as List<dynamic>).map((row) {
+        final m = row as Map<String, dynamic>;
+        return ParsedBiomarker(
+          name: m['biomarker_name'] as String? ?? '',
+          value: (m['numeric_value'] as num?)?.toDouble() ?? 0.0,
+          unit: m['unit'] as String? ?? '',
+        );
+      }).toList();
+
+      return Success(biomarkers);
+    } catch (e, st) {
+      _logDbError('getBiomarkers', e, st);
+      return Failure('Failed to load biomarkers: ${_mapDbError(e)}');
     }
   }
 

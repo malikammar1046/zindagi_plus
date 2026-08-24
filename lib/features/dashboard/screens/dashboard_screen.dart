@@ -18,22 +18,16 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authNotifierProvider);
-    final dashboard = ref.watch(dashboardDataProvider);
-    
+    debugPrint('[DASHBOARD-01] DashboardScreen build()');
+    final userName = ref.watch(authNotifierProvider.select((u) => u?.name ?? 'there'));
+    final data = ref.watch(dashboardDataProvider);
+    debugPrint('[DASHBOARD-02] DashboardScreen userName=$userName activeMeds=${data['activeMeds']}');
+
     return Scaffold(
       body: SafeArea(
-        child: dashboard.when(
-          loading: () => const Center(
-            child: CircularProgressIndicator(),
-          ),
-          error: (e, st) => ErrorStateWidget(
-            message: e.toString(),
-          ),
-          data: (data) => _Content(
-            name: user?.name ?? 'there',
-            data: data,
-          ),
+        child: _Content(
+          name: userName,
+          data: data,
         ),
       ),
     );
@@ -47,6 +41,7 @@ class _Content extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[DASHBOARD-03] _Content build() for $name');
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final insights = data['recentInsights'] as List<dynamic>;
@@ -107,7 +102,7 @@ class _Content extends StatelessWidget {
         ),
         const SizedBox(height: 32),
 
-        SectionHeader(
+        const SectionHeader(
           title: 'Your health, at a glance',
         ),
         const SizedBox(height: 16),
@@ -167,8 +162,15 @@ class _Content extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            const StatusBadge(text: 'LIVE', status: BadgeStatus.normal),
+            const StatusBadge(text: 'SAMPLE', status: BadgeStatus.info),
           ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Personalized clinical insights will appear after health analysis is enabled.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
         ),
         const SizedBox(height: 16),
 
@@ -186,7 +188,7 @@ class _Content extends StatelessWidget {
   }
 }
 
-class _TapScorePanel extends StatefulWidget {
+class _TapScorePanel extends StatelessWidget {
   const _TapScorePanel({
     required this.score,
     required this.activeMeds,
@@ -200,39 +202,18 @@ class _TapScorePanel extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_TapScorePanel> createState() => _TapScorePanelState();
-}
-
-class _TapScorePanelState extends State<_TapScorePanel> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
     
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 150),
-        scale: _pressed ? 0.98 : 1.0,
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorScheme.primary, // Solid Emerald background
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.primary.withValues(alpha: 0.2),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
+    return Material(
+      color: colorScheme.primary,
+      borderRadius: BorderRadius.circular(24),
+      elevation: 4,
+      shadowColor: colorScheme.primary.withValues(alpha: 0.3),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,7 +226,7 @@ class _TapScorePanelState extends State<_TapScorePanel> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'HEALTH PULSE',
+                          'HEALTH PULSE · SAMPLE SCORE (DEMO)',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 10,
@@ -274,7 +255,7 @@ class _TapScorePanelState extends State<_TapScorePanel> {
                       ],
                     ),
                   ),
-                  _ScoreRing(score: widget.score),
+                  _ScoreRing(score: score),
                 ],
               ),
               const SizedBox(height: 24),
@@ -282,9 +263,9 @@ class _TapScorePanelState extends State<_TapScorePanel> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  _Stat(value: '${widget.activeMeds}', label: 'medicines'),
-                  _Stat(value: widget.lastReport, label: 'latest report'),
-                  _Stat(value: widget.weight, label: 'current weight'),
+                  _Stat(value: '$activeMeds', label: 'medicines'),
+                  _Stat(value: lastReport, label: 'latest report'),
+                  _Stat(value: weight, label: 'current weight'),
                 ],
               ),
             ],
@@ -391,6 +372,7 @@ class _Ring extends CustomPainter {
 
   @override
   void paint(Canvas c, Size s) {
+    if (s.width <= 14 || s.height <= 14) return;
     final rect = Rect.fromLTWH(7, 7, s.width - 14, s.height - 14);
     final p = Paint()
       ..style = PaintingStyle.stroke
@@ -406,7 +388,7 @@ class _Ring extends CustomPainter {
   bool shouldRepaint(_Ring o) => o.progress != progress;
 }
 
-class _QuickAction extends StatefulWidget {
+class _QuickAction extends StatelessWidget {
   const _QuickAction({
     required this.icon,
     required this.label,
@@ -417,122 +399,87 @@ class _QuickAction extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_QuickAction> createState() => _QuickActionState();
-}
-
-class _QuickActionState extends State<_QuickAction> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 130),
-        scale: _pressed ? 0.95 : 1.0,
-        child: AppCard(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          child: Column(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(widget.icon, color: theme.colorScheme.primary, size: 22),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                widget.label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      child: Column(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: theme.colorScheme.primary, size: 22),
           ),
-        ),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 }
 
-class _Insight extends StatefulWidget {
+class _Insight extends StatelessWidget {
   const _Insight({required this.text, required this.recId});
   final String text;
   final String recId;
-
-  @override
-  State<_Insight> createState() => _InsightState();
-}
-
-class _InsightState extends State<_Insight> {
-  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        context.push('/recommendation/${widget.recId}');
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 130),
-        scale: _pressed ? 0.98 : 1.0,
-        child: AppCard(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.auto_awesome_rounded,
-                  color: colorScheme.primary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  widget.text,
-                  style: TextStyle(
-                    color: colorScheme.onSurface.withValues(alpha: 0.8),
-                    fontSize: 14,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: colorScheme.onSurface.withValues(alpha: 0.3),
-                size: 16,
-              ),
-            ],
+    return AppCard(
+      onTap: () => context.push('/recommendation/$recId'),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              color: colorScheme.primary,
+              size: 20,
+            ),
           ),
-        ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: colorScheme.onSurface.withValues(alpha: 0.8),
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            color: colorScheme.onSurface.withValues(alpha: 0.3),
+            size: 16,
+          ),
+        ],
       ),
     );
   }
 }
+
